@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EYON Cargo Internacional</title>
+    <script>
+      (function () {
+        try {
+          var currentFetch = window.fetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function () {
+              return currentFetch;
+            },
+            set: function (val) {
+              currentFetch = val;
+            },
+            configurable: true,
+            enumerable: true,
+          });
+        } catch (e) {
+          // Ignore if re-definition is not allowed
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

@@ -1,0 +1,6 @@
+{
+  "name": "EYON Cargo Internacional",
+  "description": "Sistema modular de gestión de carga internacional, flota, clientes y finanzas con arquitectura orientada a eventos y microservicios.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
