@@ -194,6 +194,7 @@ interface AppContextType {
   exportBackupJson: () => void;
   importBackupJson: (file: File) => Promise<void>;
   restoreDemoData: () => Promise<void>;
+  refreshData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -305,7 +306,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const connectStream = () => {
       try {
-        eventSource = new EventSource('/api/v1/sync/stream');
+        eventSource = new EventSource(`${api.getApiBase()}/sync/stream`);
         eventSource.onmessage = (e) => {
           if (!isSubscribed) return;
           try {
@@ -505,6 +506,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // First try full server state
       const serverState = await api.fetchFullSyncState();
       if (serverState) {
+        let hasNewLocalData = false;
+        const rawLocal = localStorage.getItem(STORAGE_KEY);
+        let parsedLocal: any = null;
+        if (rawLocal) {
+          try { parsedLocal = JSON.parse(rawLocal); } catch {}
+        }
+
         if (serverState.clientes) loadedClientes = serverState.clientes;
         if (serverState.viajes) loadedViajes = serverState.viajes;
         if (serverState.vehiculos) loadedVehiculos = serverState.vehiculos;
@@ -512,6 +520,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (serverState.deudas) loadedDeudas = serverState.deudas;
         if (serverState.pagos) loadedPagos = serverState.pagos;
         if (serverState.socios) loadedSocios = serverState.socios;
+
+        // Auto-merge local vehicles/trips created while offline or before cloud sync was configured
+        if (parsedLocal) {
+          if (parsedLocal.vehiculos && Array.isArray(parsedLocal.vehiculos)) {
+            const serverVehIds = new Set(loadedVehiculos.map((v) => v.id));
+            const extraVehs = parsedLocal.vehiculos.filter((v: any) => v && v.id && !serverVehIds.has(v.id));
+            if (extraVehs.length > 0) {
+              loadedVehiculos = [...loadedVehiculos, ...extraVehs];
+              hasNewLocalData = true;
+            }
+          }
+          if (parsedLocal.viajes && Array.isArray(parsedLocal.viajes)) {
+            const serverTripIds = new Set(loadedViajes.map((t) => t.id));
+            const extraTrips = parsedLocal.viajes.filter((t: any) => t && t.id && !serverTripIds.has(t.id));
+            if (extraTrips.length > 0) {
+              loadedViajes = [...loadedViajes, ...extraTrips];
+              hasNewLocalData = true;
+            }
+          }
+          if (parsedLocal.clientes && Array.isArray(parsedLocal.clientes)) {
+            const serverClientIds = new Set(loadedClientes.map((c) => c.id));
+            const extraClients = parsedLocal.clientes.filter((c: any) => c && c.id && !serverClientIds.has(c.id));
+            if (extraClients.length > 0) {
+              loadedClientes = [...loadedClientes, ...extraClients];
+              hasNewLocalData = true;
+            }
+          }
+        }
+
+        // Push merged state to cloud server so all other browsers (Opera, mobile) pick it up instantly
+        if (hasNewLocalData) {
+          const mergedData = {
+            clientes: loadedClientes,
+            viajes: loadedViajes,
+            vehiculos: loadedVehiculos,
+            cuentas: loadedCuentas,
+            deudas: loadedDeudas,
+            pagos: loadedPagos,
+            socios: loadedSocios,
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
+          api.syncFullState(mergedData).catch(() => {});
+        }
       } else {
         // Fallback to local storage
         const rawLocal = localStorage.getItem(STORAGE_KEY);
@@ -1665,6 +1716,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         exportBackupJson,
         importBackupJson,
         restoreDemoData,
+        refreshData: loadAllData,
       }}
     >
       {children}

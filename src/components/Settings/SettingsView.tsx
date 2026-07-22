@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Settings, Shield, SlidersHorizontal, Cloud, Download, Upload, Key, Check, Github, EyeOff, Lock, CheckCircle2, UserCheck, History, RefreshCw, CalendarCheck, RotateCcw, ExternalLink } from 'lucide-react';
+import { DEFAULT_CLOUD_API_URL } from '../../services/api';
+import { Settings, Shield, SlidersHorizontal, Cloud, Download, Upload, Key, Check, Github, EyeOff, Lock, CheckCircle2, UserCheck, History, RefreshCw, CalendarCheck, RotateCcw, ExternalLink, Globe } from 'lucide-react';
 
 export default function SettingsView() {
   const {
@@ -28,12 +29,30 @@ export default function SettingsView() {
     triggerGoogleSheetsSync,
     toggleGoogleAutoSync,
     downloadExcelBackup,
+    refreshData,
   } = useApp();
 
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [tempSheetsUrl, setTempSheetsUrl] = useState(sheetsUrl);
   const [anonConfirm, setAnonConfirm] = useState(false);
+  const [customApiUrl, setCustomApiUrl] = useState(() => {
+    return localStorage.getItem('eyon_api_remote_url') || DEFAULT_CLOUD_API_URL;
+  });
+
+  const handleSaveCustomApiUrl = () => {
+    if (!customApiUrl.trim()) return;
+    localStorage.setItem('eyon_api_remote_url', customApiUrl.trim());
+    alert('URL de Servidor Nube guardada. Sincronizando datos...');
+    refreshData();
+  };
+
+  const handleResetCustomApiUrl = () => {
+    localStorage.removeItem('eyon_api_remote_url');
+    setCustomApiUrl(DEFAULT_CLOUD_API_URL);
+    alert('Restablecido a la URL oficial del Servidor EYON Nube.');
+    refreshData();
+  };
 
   const handleChangePassword = async () => {
     if (!newPass || newPass.length < 4) {
@@ -305,6 +324,99 @@ export default function SettingsView() {
             <Lock className="w-4 h-4" />
             <span>Guardar Credenciales de Administrador</span>
           </button>
+        </div>
+      </div>
+
+      {/* Sincronización Multidispositivo (GitHub Pages, Chrome, Opera, Celulares) */}
+      <div className="bg-[#212933] border border-amber-500/40 rounded-2xl p-6 space-y-5 shadow-xl relative overflow-hidden">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 className="font-bold text-slate-100 text-base flex items-center gap-2">
+              <Globe className="w-5 h-5 text-amber-400" />
+              <span>Sincronización Multidispositivo en Nube (GitHub Pages, Opera, Celulares)</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              Tus unidades agregadas (como RAUL1 y RAUL2), clientes, viajes y finanzas se sincronizan automáticamente entre navegadores (Chrome, Opera, Edge) y celulares conectados a tu cuenta única EYON.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold rounded-full flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Sincronización Nube Activa
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-[#14181c] border border-[#2e3944] rounded-xl p-5 space-y-4">
+          <div>
+            <label className="block text-[11px] text-slate-400 uppercase font-semibold mb-1">
+              URL del Servidor Nube para GitHub Pages
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={customApiUrl}
+                onChange={(e) => setCustomApiUrl(e.target.value)}
+                placeholder="https://..."
+                className="flex-1 px-3.5 py-2.5 bg-[#1b222b] border border-[#2e3944] rounded-xl text-slate-200 text-xs font-mono focus:outline-none focus:border-amber-500"
+              />
+              <button
+                onClick={handleSaveCustomApiUrl}
+                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Check className="w-4 h-4" />
+                <span>Guardar URL</span>
+              </button>
+              <button
+                onClick={handleResetCustomApiUrl}
+                className="px-4 py-2.5 bg-[#212933] hover:bg-[#2e3944] text-slate-300 border border-[#2e3944] font-medium rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4 text-slate-400" />
+                <span>Restablecer</span>
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1.5">
+              Esta URL permite que la versión publicada en GitHub Pages (<code className="text-amber-400/90 font-mono">webze.github.io</code>) comparta los vehículos en tiempo real entre Opera, Chrome y dispositivos móviles.
+            </p>
+          </div>
+
+          <div className="pt-2 border-t border-[#2e3944] flex flex-wrap gap-3 items-center justify-between">
+            <button
+              onClick={async () => {
+                await refreshData();
+                alert('¡Sincronización Nube completada! Todos tus vehículos y datos se actualizaron desde el servidor.');
+              }}
+              className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>⚡ Sincronizar Ahora con la Nube</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={exportBackupJson}
+                className="px-3.5 py-2 bg-[#212933] hover:bg-[#2e3944] border border-[#2e3944] text-slate-200 rounded-xl text-xs font-medium cursor-pointer flex items-center gap-1.5"
+              >
+                <Download className="w-4 h-4 text-amber-400" />
+                <span>Exportar Copia de Seguridad JSON</span>
+              </button>
+
+              <label className="px-3.5 py-2 bg-[#212933] hover:bg-[#2e3944] border border-[#2e3944] text-slate-200 rounded-xl text-xs font-medium cursor-pointer flex items-center gap-1.5">
+                <Upload className="w-4 h-4 text-emerald-400" />
+                <span>Importar JSON</span>
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) importBackupJson(file);
+                  }}
+                />
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
