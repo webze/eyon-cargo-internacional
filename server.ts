@@ -90,7 +90,7 @@ const database: {
 } = {
   auth: {
     configured: true,
-    username: "admin",
+    username: "EYON",
     passwordHash: hashPasswordServer("admin"),
   },
   clientes: [
@@ -390,7 +390,7 @@ loadDatabaseFromDisk();
 if (!database.auth || !database.auth.configured || !database.auth.username) {
   database.auth = {
     configured: true,
-    username: "admin",
+    username: "EYON",
     passwordHash: hashPasswordServer("admin"),
   };
   saveDatabaseToDisk();
@@ -407,7 +407,7 @@ async function startServer() {
     if (!database.auth || !database.auth.configured || !database.auth.username) {
       database.auth = {
         configured: true,
-        username: "admin",
+        username: "EYON",
         passwordHash: hashPasswordServer("admin"),
       };
       saveDatabaseToDisk();
@@ -441,7 +441,7 @@ async function startServer() {
     if (!database.auth || !database.auth.configured || !database.auth.username) {
       database.auth = {
         configured: true,
-        username: "admin",
+        username: "EYON",
         passwordHash: hashPasswordServer("admin"),
       };
       saveDatabaseToDisk();
@@ -450,15 +450,10 @@ async function startServer() {
     const dbUser = String(database.auth.username || "").trim().toLowerCase();
     const defaultAdminHash = hashPasswordServer("admin");
 
-    const userMatches = reqUser === dbUser || reqUser === "admin";
+    const userMatches = reqUser === dbUser || reqUser === "eyon" || reqUser === "admin";
     const passMatches = passwordHash === database.auth.passwordHash || passwordHash === defaultAdminHash;
 
     if (userMatches && passMatches) {
-      if (passwordHash === defaultAdminHash && database.auth.passwordHash !== defaultAdminHash) {
-        database.auth.username = "admin";
-        database.auth.passwordHash = defaultAdminHash;
-        saveDatabaseToDisk();
-      }
       eventBus.publish("AuthService", "USER_LOGIN_SUCCESS", { username: database.auth.username }, "SUCCESS", `Acceso autorizado para [${database.auth.username}]`);
       return res.json({ success: true, username: database.auth.username });
     }
@@ -469,12 +464,12 @@ async function startServer() {
   app.post("/api/v1/auth/reset", (req, res) => {
     database.auth = {
       configured: true,
-      username: "admin",
+      username: "EYON",
       passwordHash: hashPasswordServer("admin"),
     };
     saveDatabaseToDisk();
-    eventBus.publish("AuthService", "AUTH_RESET", { username: "admin" }, "SUCCESS", "Credenciales de administrador restablecidas a admin / admin");
-    res.json({ success: true, message: "Credenciales de administrador restablecidas a 'admin' / 'admin'", username: "admin" });
+    eventBus.publish("AuthService", "AUTH_RESET", { username: "EYON" }, "SUCCESS", "Credenciales restablecidas a EYON / admin");
+    res.json({ success: true, message: "Credenciales restablecidas a 'EYON' / 'admin'", username: "EYON" });
   });
 
   app.put("/api/v1/auth/password", (req, res) => {
@@ -482,7 +477,7 @@ async function startServer() {
     if (!database.auth || !database.auth.configured) {
       database.auth = {
         configured: true,
-        username: "admin",
+        username: "EYON",
         passwordHash: hashPasswordServer("admin"),
       };
       saveDatabaseToDisk();

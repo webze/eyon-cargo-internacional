@@ -478,8 +478,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const authStatus = await api.fetchAuthStatus();
       if (authStatus && authStatus.configured) {
         setHasConfiguredUser(true);
-        setConfiguredUsername(authStatus.username || 'admin');
-        localStorage.setItem(AUTH_USER_KEY, authStatus.username || 'admin');
+        setConfiguredUsername(authStatus.username || 'EYON');
+        localStorage.setItem(AUTH_USER_KEY, authStatus.username || 'EYON');
       } else {
         const savedUser = localStorage.getItem(AUTH_USER_KEY);
         const savedPassHash = localStorage.getItem(AUTH_PASS_KEY);
@@ -488,15 +488,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setConfiguredUsername(savedUser);
           api.setupAuthServer(savedUser, savedPassHash).catch(() => {});
         } else {
-          // Si no hay configuración previa, el servidor auto-configura 'admin'
+          // Si no hay configuración previa, el servidor auto-configura 'EYON'
           setHasConfiguredUser(true);
-          setConfiguredUsername('admin');
-          localStorage.setItem(AUTH_USER_KEY, 'admin');
+          setConfiguredUsername('EYON');
+          localStorage.setItem(AUTH_USER_KEY, 'EYON');
         }
       }
     } catch {
       setHasConfiguredUser(true);
-      setConfiguredUsername('admin');
+      setConfiguredUsername('EYON');
     } finally {
       setAuthLoading(false);
     }

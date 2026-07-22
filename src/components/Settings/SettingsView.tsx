@@ -32,7 +32,7 @@ export default function SettingsView() {
 
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
-  const [adminUsername, setAdminUsername] = useState(configuredUsername || 'admin');
+  const [adminUsername, setAdminUsername] = useState(configuredUsername || 'EYON');
   const [tempSheetsUrl, setTempSheetsUrl] = useState(sheetsUrl);
   const [anonConfirm, setAnonConfirm] = useState(false);
 
@@ -265,7 +265,7 @@ export default function SettingsView() {
           <span>Gestión de Usuario y Seguridad Administrador</span>
         </h3>
         <p className="text-xs text-slate-400 leading-relaxed">
-          Usuario Administrador activo: <strong className="text-amber-300 font-mono">{configuredUsername || 'admin'}</strong>. Las credenciales se guardan de forma centralizada y segura encriptadas con SHA-256 para que puedas ingresar desde cualquier celular o equipo.
+          Usuario Administrador activo: <strong className="text-amber-300 font-mono">{configuredUsername || 'EYON'}</strong>. Las credenciales se guardan de forma centralizada y segura encriptadas con SHA-256 para que puedas ingresar desde cualquier celular o equipo.
         </p>
 
         <div className="space-y-3 max-w-md pt-1">
@@ -277,7 +277,7 @@ export default function SettingsView() {
               type="text"
               value={adminUsername}
               onChange={(e) => setAdminUsername(e.target.value)}
-              placeholder="Ej. admin"
+              placeholder="Ej. EYON"
               className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 text-xs focus:outline-none focus:border-amber-500 font-medium"
             />
           </div>

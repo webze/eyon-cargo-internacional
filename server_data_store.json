@@ -1,0 +1,154 @@
+{
+  "auth": {
+    "configured": true,
+    "username": "EYON",
+    "passwordHash": "4a4392d33f6e6b17f30db41a03427bbc94ebd5352f7906444433b93a82b260b5"
+  },
+  "clientes": [
+    {
+      "id": "cli_2",
+      "nombre": "SOCIEDAD MINERA CERRO VERDE S.A.A.",
+      "ruc": "20132388081",
+      "telefono": "054-381500",
+      "contacto": "Lic. Lucía Paredes",
+      "email": "despacho@cerroverde.pe",
+      "notas": "Fletes frecuentes Lima - Arequipa - Moquegua.",
+      "fechaRegistro": "2026-02-01",
+      "estado": "Activo",
+      "limiteCredito": 200000
+    }
+  ],
+  "viajes": [
+    {
+      "id": "vj_1",
+      "origen": "Lima (Callao Terminal)",
+      "destino": "Arequipa (Cerro Verde)",
+      "fecha": "2026-07-22",
+      "clienteId": "cli_2",
+      "vehiculoId": "veh_1",
+      "estado": "Completado",
+      "conductor": "Manuel Reyes Quispe",
+      "monto": 8500,
+      "costoEstimado": 3800,
+      "guiasRemision": "001-008923 / 001-008924",
+      "notas": "Carga pesada de tuberías de acero 12 pulgadas."
+    }
+  ],
+  "vehiculos": [
+    {
+      "id": "veh_2",
+      "placa": "F3B-411",
+      "tipo": "Camión",
+      "marca": "Scania",
+      "modelo": "R450 (2020)",
+      "notas": "Mantenimiento preventivo reciente en concesionario.",
+      "documentos": [
+        {
+          "id": "doc_201",
+          "tipo": "SOAT",
+          "entidad": "Aseguradora / MTC",
+          "fecha": "2026-07-20",
+          "numeroDoc": "PÓLIZA-11203",
+          "notas": "Atención: Vencido hace 2 días."
+        }
+      ],
+      "combustible": [
+        {
+          "id": "comb_2",
+          "fecha": "2026-07-19",
+          "galones": 90,
+          "costo": 1755,
+          "km": 210400,
+          "nivel": 40,
+          "grifo": "Repsol Lurín"
+        }
+      ],
+      "estado": "Operativo"
+    }
+  ],
+  "cuentas": [
+    {
+      "id": "cta_1",
+      "banco": "BCP - Banco de Crédito del Perú",
+      "tipo": "Cuenta corriente",
+      "saldo": 148500,
+      "reservado": 32000,
+      "numeroCuenta": "191-28391823-0-12",
+      "moneda": "PEN",
+      "notas": "Cuenta principal para cobranza de fletes y depósitos."
+    },
+    {
+      "id": "cta_2",
+      "banco": "BBVA Perú",
+      "tipo": "Cuenta corriente",
+      "saldo": 65200,
+      "reservado": 12000,
+      "numeroCuenta": "0011-0182-01000293",
+      "moneda": "PEN",
+      "notas": "Pago a proveedores y detracciones SUNAT."
+    }
+  ],
+  "deudas": [
+    {
+      "id": "deu_1",
+      "entidad": "Interbank - Crédito Vehicular Tráiler",
+      "tipo": "Crédito vehicular",
+      "total": 350000,
+      "pendiente": 185000,
+      "cuota": 12400,
+      "fecha": "2026-07-27",
+      "tasaInteres": 8.5,
+      "notas": "Cuota 18 de 36."
+    }
+  ],
+  "pagos": [
+    {
+      "id": "pag_1",
+      "tipo": "Ingreso",
+      "estado": "Pagado",
+      "categoria": "Flete Internacional",
+      "monto": 8500,
+      "fecha": "2026-07-22",
+      "cuentaId": "cta_1",
+      "descripcion": "Adelanto flete Cerro Verde 50%"
+    },
+    {
+      "id": "pag_2",
+      "tipo": "Egreso",
+      "estado": "Pagado",
+      "categoria": "Combustible Diesel B5",
+      "monto": 2340,
+      "fecha": "2026-07-22",
+      "cuentaId": "cta_2",
+      "descripcion": "Recarga de combustible Tráiler V7A-982"
+    }
+  ],
+  "socios": [
+    {
+      "id": "soc_1",
+      "nombre": "Socio Fundador A",
+      "pct": 50,
+      "pagos": [
+        {
+          "id": "spag_1",
+          "fecha": "2026-07-22",
+          "monto": 15000,
+          "concepto": "Reparto de utilidades Q1"
+        }
+      ]
+    },
+    {
+      "id": "soc_2",
+      "nombre": "Socio Fundador B",
+      "pct": 50,
+      "pagos": [
+        {
+          "id": "spag_2",
+          "fecha": "2026-07-22",
+          "monto": 15000,
+          "concepto": "Reparto de utilidades Q1"
+        }
+      ]
+    }
+  ]
+}
