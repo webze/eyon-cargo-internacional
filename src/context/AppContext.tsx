@@ -275,7 +275,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     // Session login
-    if (sessionStorage.getItem('eyon_logged') === '1') {
+    if (sessionStorage.getItem('eyon_logged') === '1' || localStorage.getItem('eyon_logged') === '1') {
       setIsLoggedIn(true);
     }
 
@@ -630,6 +630,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await api.setupAuthServer(cleanUser, hash);
 
     sessionStorage.setItem('eyon_logged', '1');
+    localStorage.setItem('eyon_logged', '1');
     setIsLoggedIn(true);
     showToastMessage(`Usuario "${cleanUser}" registrado exitosamente en el servidor con clave encriptada.`);
   };
@@ -647,6 +648,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(AUTH_USER_KEY, 'EYON');
       localStorage.setItem(AUTH_PASS_KEY, hash);
       sessionStorage.setItem('eyon_logged', '1');
+      localStorage.setItem('eyon_logged', '1');
       setIsLoggedIn(true);
       showToastMessage('Bienvenido de nuevo, EYON');
       api.loginAuthServer(cleanUser, hash).catch(() => {});
@@ -659,6 +661,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(AUTH_USER_KEY, cleanUser);
       localStorage.setItem(AUTH_PASS_KEY, hash);
       sessionStorage.setItem('eyon_logged', '1');
+      localStorage.setItem('eyon_logged', '1');
       setIsLoggedIn(true);
       showToastMessage(`Bienvenido de nuevo, ${cleanUser}`);
       return true;
@@ -670,6 +673,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (savedUser && savedPassHash && cleanUser.toLowerCase() === savedUser.trim().toLowerCase() && hash === savedPassHash) {
       sessionStorage.setItem('eyon_logged', '1');
+      localStorage.setItem('eyon_logged', '1');
       setIsLoggedIn(true);
       showToastMessage(`Bienvenido de nuevo, ${savedUser}`);
       return true;
@@ -705,6 +709,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(PIN_KEY, pin);
     setHasConfiguredPin(true);
     sessionStorage.setItem('eyon_logged', '1');
+    localStorage.setItem('eyon_logged', '1');
     setIsLoggedIn(true);
     showToastMessage('Código PIN de seguridad creado e iniciado correctamente.');
   };
@@ -717,6 +722,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     if (pin === savedPin) {
       sessionStorage.setItem('eyon_logged', '1');
+      localStorage.setItem('eyon_logged', '1');
       setIsLoggedIn(true);
       showToastMessage('Bienvenido a EYON Cargo Internacional');
       return true;
@@ -726,6 +732,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     sessionStorage.removeItem('eyon_logged');
+    localStorage.removeItem('eyon_logged');
     setIsLoggedIn(false);
   };
 
