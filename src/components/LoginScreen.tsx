@@ -26,11 +26,6 @@ export default function LoginScreen() {
     e.preventDefault();
     setError(null);
 
-    const cleanUser = username.trim();
-    if (!cleanUser) {
-      setError('Ingresa tu usuario.');
-      return;
-    }
     if (!password) {
       setError('Ingresa tu contraseña.');
       return;
@@ -38,9 +33,9 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const success = await loginWithCredentials(cleanUser, password);
+      const success = await loginWithCredentials('EYON', password);
       if (!success) {
-        setError('Usuario o contraseña incorrectos.');
+        setError('Contraseña incorrecta para la cuenta EYON.');
       }
     } catch (err: any) {
       setError('Error de inicio de sesión: ' + (err.message || 'Intenta nuevamente'));
@@ -86,25 +81,20 @@ export default function LoginScreen() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Usuario */}
+          {/* Usuario Único Master */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-              Usuario
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center justify-between">
+              <span>Usuario Master</span>
+              <span className="text-[10px] text-amber-400 font-bold">CUENTA ÚNICA</span>
             </label>
             <div className="relative">
               <input
                 type="text"
-                value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value);
-                  setError(null);
-                }}
-                placeholder="Ej. EYON"
-                className="w-full pl-10 pr-4 py-3 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-sm font-medium"
-                autoCapitalize="none"
-                autoCorrect="off"
+                value="EYON"
+                readOnly
+                className="w-full pl-10 pr-4 py-3 bg-[#14181c] border border-amber-500/40 rounded-xl text-amber-300 font-mono font-bold text-sm cursor-not-allowed opacity-90"
               />
-              <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
+              <User className="w-4 h-4 text-amber-500 absolute left-3.5 top-3.5 pointer-events-none" />
             </div>
           </div>
 

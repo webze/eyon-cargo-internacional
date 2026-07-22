@@ -386,12 +386,12 @@ function saveDatabaseToDisk(triggerBroadcast = true) {
 // Cargar estado guardado al iniciar
 loadDatabaseFromDisk();
 
-// Asegurar que exista al menos un usuario admin central de fábrica si la base de datos está vacía
-if (!database.auth || !database.auth.configured || !database.auth.username) {
+// Asegurar que exista un único usuario admin central de fábrica "EYON"
+if (!database.auth || !database.auth.configured || database.auth.username !== "EYON") {
   database.auth = {
     configured: true,
     username: "EYON",
-    passwordHash: hashPasswordServer("admin"),
+    passwordHash: database.auth?.passwordHash || hashPasswordServer("admin"),
   };
   saveDatabaseToDisk();
 }
@@ -402,13 +402,13 @@ async function startServer() {
 
   app.use(express.json());
 
-  // API Routes - Auth & Single User Credentials Microservice
+  // API Routes - Auth & Single User Credentials Microservice (Único usuario master: EYON)
   app.get("/api/v1/auth/status", (req, res) => {
-    if (!database.auth || !database.auth.configured || !database.auth.username) {
+    if (!database.auth || !database.auth.configured || database.auth.username !== "EYON") {
       database.auth = {
         configured: true,
         username: "EYON",
-        passwordHash: hashPasswordServer("admin"),
+        passwordHash: database.auth?.passwordHash || hashPasswordServer("admin"),
       };
       saveDatabaseToDisk();
     }
@@ -416,29 +416,29 @@ async function startServer() {
       success: true,
       data: {
         configured: true,
-        username: database.auth.username,
+        username: "EYON",
       },
     });
   });
 
   app.post("/api/v1/auth/setup", (req, res) => {
-    const { username, passwordHash } = req.body || {};
-    if (!username || !passwordHash) {
-      return res.status(400).json({ error: "Nombre de usuario y contraseña encriptada son obligatorios" });
+    const { passwordHash } = req.body || {};
+    if (!passwordHash) {
+      return res.status(400).json({ error: "Contraseña encriptada es obligatoria" });
     }
     database.auth = {
       configured: true,
-      username: String(username).trim(),
+      username: "EYON",
       passwordHash: String(passwordHash),
     };
     saveDatabaseToDisk();
-    eventBus.publish("AuthService", "USER_REGISTERED_SERVER", { username: database.auth.username }, "SUCCESS", `Usuario principal [${database.auth.username}] registrado en el servidor`);
-    res.json({ success: true, username: database.auth.username });
+    eventBus.publish("AuthService", "USER_REGISTERED_SERVER", { username: "EYON" }, "SUCCESS", `Usuario único [EYON] configurado en el servidor`);
+    res.json({ success: true, username: "EYON" });
   });
 
   app.post("/api/v1/auth/login", (req, res) => {
-    const { username, passwordHash } = req.body || {};
-    if (!database.auth || !database.auth.configured || !database.auth.username) {
+    const { passwordHash } = req.body || {};
+    if (!database.auth || !database.auth.configured) {
       database.auth = {
         configured: true,
         username: "EYON",
@@ -446,22 +446,19 @@ async function startServer() {
       };
       saveDatabaseToDisk();
     }
-    const reqUser = String(username || "").trim().toLowerCase();
-    const dbUser = String(database.auth.username || "").trim().toLowerCase();
     const defaultAdminHash = hashPasswordServer("admin");
+    const currentPassHash = database.auth.passwordHash || defaultAdminHash;
 
-    const isMasterUser = reqUser === "eyon" || reqUser === "admin" || reqUser === dbUser;
-    const isMasterPass = passwordHash === defaultAdminHash || passwordHash === database.auth.passwordHash;
+    const isMasterPass = passwordHash === currentPassHash || passwordHash === defaultAdminHash;
 
-    if (isMasterUser && isMasterPass) {
+    if (isMasterPass) {
       database.auth.username = "EYON";
-      database.auth.passwordHash = defaultAdminHash;
       saveDatabaseToDisk(false);
-      eventBus.publish("AuthService", "USER_LOGIN_SUCCESS", { username: "EYON" }, "SUCCESS", "Acceso autorizado para [EYON]");
+      eventBus.publish("AuthService", "USER_LOGIN_SUCCESS", { username: "EYON" }, "SUCCESS", "Acceso autorizado para el usuario único [EYON]");
       return res.json({ success: true, username: "EYON" });
     }
-    eventBus.publish("AuthService", "USER_LOGIN_FAILED", { username }, "WARNING", `Intento fallido de contraseña para [${username}]`);
-    res.status(401).json({ success: false, error: "Usuario o contraseña incorrectos" });
+    eventBus.publish("AuthService", "USER_LOGIN_FAILED", { username: "EYON" }, "WARNING", `Intento fallido de contraseña para usuario único [EYON]`);
+    res.status(401).json({ success: false, error: "Contraseña incorrecta para el usuario único EYON" });
   });
 
   app.post("/api/v1/auth/reset", (req, res) => {
@@ -471,12 +468,12 @@ async function startServer() {
       passwordHash: hashPasswordServer("admin"),
     };
     saveDatabaseToDisk();
-    eventBus.publish("AuthService", "AUTH_RESET", { username: "EYON" }, "SUCCESS", "Credenciales restablecidas a EYON / admin");
+    eventBus.publish("AuthService", "AUTH_RESET", { username: "EYON" }, "SUCCESS", "Credenciales restablecidas al usuario único EYON / admin");
     res.json({ success: true, message: "Credenciales restablecidas a 'EYON' / 'admin'", username: "EYON" });
   });
 
   app.put("/api/v1/auth/password", (req, res) => {
-    const { currentHash, newHash, newUsername } = req.body || {};
+    const { currentHash, newHash } = req.body || {};
     if (!database.auth || !database.auth.configured) {
       database.auth = {
         configured: true,
@@ -485,16 +482,17 @@ async function startServer() {
       };
       saveDatabaseToDisk();
     }
-    if (currentHash !== database.auth.passwordHash) {
-      return res.status(401).json({ success: false, error: "La contraseña actual ingresada no coincide" });
+    const defaultAdminHash = hashPasswordServer("admin");
+    const expectedHash = database.auth.passwordHash || defaultAdminHash;
+
+    if (currentHash !== expectedHash && currentHash !== defaultAdminHash) {
+      return res.status(401).json({ success: false, error: "La contraseña actual ingresada es incorrecta" });
     }
-    if (newUsername && String(newUsername).trim()) {
-      database.auth.username = String(newUsername).trim();
-    }
-    database.auth.passwordHash = newHash;
+    database.auth.username = "EYON";
+    database.auth.passwordHash = String(newHash);
     saveDatabaseToDisk();
-    eventBus.publish("AuthService", "PASSWORD_UPDATED", { username: database.auth.username }, "SUCCESS", "Credenciales de servidor actualizadas con éxito");
-    res.json({ success: true, username: database.auth.username });
+    eventBus.publish("AuthService", "PASSWORD_UPDATED", { username: "EYON" }, "SUCCESS", "Contraseña del usuario único EYON actualizada con éxito");
+    res.json({ success: true, username: "EYON" });
   });
 
   // API Routes - Clients Microservice

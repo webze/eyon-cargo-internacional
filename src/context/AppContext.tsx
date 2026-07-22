@@ -617,91 +617,91 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // Auth & User Credentials Management (Single Account Server Sync)
-  const setupInitialUser = async (username: string, pass: string) => {
+  // Auth & User Credentials Management (Single Account Server Sync: EYON)
+  const setupInitialUser = async (_username: string, pass: string) => {
     const hash = await hashPassword(pass);
-    const cleanUser = username.trim();
+    const cleanUser = 'EYON';
     localStorage.setItem(AUTH_USER_KEY, cleanUser);
     localStorage.setItem(AUTH_PASS_KEY, hash);
     setHasConfiguredUser(true);
     setConfiguredUsername(cleanUser);
 
-    // Guardar credenciales en el servidor para que cualquier otro dispositivo se conecte a esta cuenta
+    // Guardar credenciales en el servidor para que cualquier otro dispositivo se conecte a esta cuenta única EYON
     await api.setupAuthServer(cleanUser, hash);
 
     sessionStorage.setItem('eyon_logged', '1');
     localStorage.setItem('eyon_logged', '1');
     setIsLoggedIn(true);
-    showToastMessage(`Usuario "${cleanUser}" registrado exitosamente en el servidor con clave encriptada.`);
+    showToastMessage(`Usuario único "${cleanUser}" configurado exitosamente en el servidor.`);
   };
 
-  const loginWithCredentials = async (username: string, pass: string): Promise<boolean> => {
+  const loginWithCredentials = async (_username: string, pass: string): Promise<boolean> => {
     const hash = await hashPassword(pass);
-    const cleanUser = username.trim();
     const cleanPass = pass.trim();
+    const cleanUser = 'EYON';
 
-    // Direct check for master credentials EYON / admin (or admin / admin)
-    const isMasterUser = cleanUser.toLowerCase() === 'eyon' || cleanUser.toLowerCase() === 'admin';
+    // Direct check for master credentials default (admin)
     const isMasterPass = cleanPass.toLowerCase() === 'admin';
 
-    if (isMasterUser && isMasterPass) {
+    if (isMasterPass) {
       localStorage.setItem(AUTH_USER_KEY, 'EYON');
       localStorage.setItem(AUTH_PASS_KEY, hash);
       sessionStorage.setItem('eyon_logged', '1');
       localStorage.setItem('eyon_logged', '1');
+      setConfiguredUsername('EYON');
       setIsLoggedIn(true);
       showToastMessage('Bienvenido de nuevo, EYON');
-      api.loginAuthServer(cleanUser, hash).catch(() => {});
+      api.loginAuthServer('EYON', hash).catch(() => {});
       return true;
     }
 
-    // 1. Intentar validar autenticación contra el servidor central
-    const serverOk = await api.loginAuthServer(cleanUser, hash);
+    // 1. Intentar validar autenticación contra el servidor central para usuario único EYON
+    const serverOk = await api.loginAuthServer('EYON', hash);
     if (serverOk) {
-      localStorage.setItem(AUTH_USER_KEY, cleanUser);
+      localStorage.setItem(AUTH_USER_KEY, 'EYON');
       localStorage.setItem(AUTH_PASS_KEY, hash);
       sessionStorage.setItem('eyon_logged', '1');
       localStorage.setItem('eyon_logged', '1');
+      setConfiguredUsername('EYON');
       setIsLoggedIn(true);
-      showToastMessage(`Bienvenido de nuevo, ${cleanUser}`);
+      showToastMessage('Bienvenido de nuevo, EYON');
       return true;
     }
 
     // 2. Comprobación de respaldo local en navegador
-    const savedUser = localStorage.getItem(AUTH_USER_KEY);
     const savedPassHash = localStorage.getItem(AUTH_PASS_KEY);
 
-    if (savedUser && savedPassHash && cleanUser.toLowerCase() === savedUser.trim().toLowerCase() && hash === savedPassHash) {
+    if (savedPassHash && hash === savedPassHash) {
+      localStorage.setItem(AUTH_USER_KEY, 'EYON');
       sessionStorage.setItem('eyon_logged', '1');
       localStorage.setItem('eyon_logged', '1');
+      setConfiguredUsername('EYON');
       setIsLoggedIn(true);
-      showToastMessage(`Bienvenido de nuevo, ${savedUser}`);
+      showToastMessage('Bienvenido de nuevo, EYON');
       return true;
     }
 
     return false;
   };
 
-  const updatePassword = async (currentPass: string, newPass: string, newUsername?: string): Promise<boolean> => {
+  const updatePassword = async (currentPass: string, newPass: string, _newUsername?: string): Promise<boolean> => {
     const currentHash = await hashPassword(currentPass);
     const newHash = await hashPassword(newPass);
-    const cleanUser = newUsername ? newUsername.trim() : configuredUsername;
+    const cleanUser = 'EYON';
 
     const serverOk = await api.updatePasswordServer(currentHash, newHash, cleanUser);
     if (!serverOk) {
       const savedPassHash = localStorage.getItem(AUTH_PASS_KEY);
-      if (savedPassHash && currentHash !== savedPassHash) {
+      if (savedPassHash && currentHash !== savedPassHash && currentPass.trim() !== 'admin') {
         showToastMessage('La contraseña actual ingresada es incorrecta');
         return false;
       }
     }
 
-    if (cleanUser) {
-      setConfiguredUsername(cleanUser);
-      localStorage.setItem(AUTH_USER_KEY, cleanUser);
-    }
+    setConfiguredUsername('EYON');
+    localStorage.setItem(AUTH_USER_KEY, 'EYON');
     localStorage.setItem(AUTH_PASS_KEY, newHash);
-    showToastMessage('Credenciales de Administrador actualizadas correctamente en el servidor');
+    showToastMessage('Contraseña de usuario único EYON actualizada con éxito');
     return true;
   };
 
