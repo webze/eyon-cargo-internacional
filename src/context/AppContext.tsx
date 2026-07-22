@@ -427,8 +427,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // If empty (e.g. first run or GitHub Pages SPA), populate with rich pre-filled demo data
+      // If empty and never initialized before, populate with rich pre-filled demo data
+      const dataInitialized = localStorage.getItem('eyon_data_initialized');
       if (
+        !dataInitialized &&
         loadedClientes.length === 0 &&
         loadedVehiculos.length === 0 &&
         loadedCuentas.length === 0
@@ -451,6 +453,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           socios: INITIAL_PARTNERS,
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(initialDataSet));
+        localStorage.setItem('eyon_data_initialized', 'true');
         api.syncFullState(initialDataSet).catch(() => {});
       }
 
@@ -758,7 +761,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // CRUD Clients
   const addClient = async (clientData: Omit<Client, 'id' | 'fechaRegistro'>) => {
-    const newClient = await api.createClient(clientData);
+    const created = await api.createClient(clientData);
+    const newClient: Client = created || {
+      id: 'cli_' + Date.now().toString(36),
+      fechaRegistro: new Date().toISOString().slice(0, 10),
+      ...clientData,
+    };
     const updated = [...clientes, newClient];
     setClientes(updated);
     saveState({ clientes: updated });
@@ -766,15 +774,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const editClient = async (id: string, clientData: Partial<Client>) => {
-    const updatedClient = await api.updateClient(id, clientData);
-    const updated = clientes.map((c) => (c.id === id ? updatedClient : c));
+    const serverRes = await api.updateClient(id, clientData);
+    const updated = clientes.map((c) => (c.id === id ? (serverRes || { ...c, ...clientData }) : c));
     setClientes(updated);
     saveState({ clientes: updated });
     showToastMessage('Cliente actualizado');
   };
 
   const removeClient = async (id: string) => {
-    await api.deleteClient(id);
+    try {
+      await api.deleteClient(id);
+    } catch (e) {
+      console.warn('Remove client API error:', e);
+    }
     const updated = clientes.filter((c) => c.id !== id);
     setClientes(updated);
     saveState({ clientes: updated });
@@ -783,7 +795,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // CRUD Trips
   const addTrip = async (tripData: Omit<Trip, 'id'>) => {
-    const newTrip = await api.createTrip(tripData);
+    const created = await api.createTrip(tripData);
+    const newTrip: Trip = created || {
+      id: 'trip_' + Date.now().toString(36),
+      ...tripData,
+    };
     const updated = [newTrip, ...viajes];
     setViajes(updated);
     saveState({ viajes: updated });
@@ -791,15 +807,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const editTrip = async (id: string, tripData: Partial<Trip>) => {
-    const updatedTrip = await api.updateTrip(id, tripData);
-    const updated = viajes.map((v) => (v.id === id ? updatedTrip : v));
+    const serverRes = await api.updateTrip(id, tripData);
+    const updated = viajes.map((v) => (v.id === id ? (serverRes || { ...v, ...tripData }) : v));
     setViajes(updated);
     saveState({ viajes: updated });
     showToastMessage('Viaje modificado');
   };
 
   const removeTrip = async (id: string) => {
-    await api.deleteTrip(id);
+    try {
+      await api.deleteTrip(id);
+    } catch (e) {
+      console.warn('Remove trip API error:', e);
+    }
     const updated = viajes.filter((v) => v.id !== id);
     setViajes(updated);
     saveState({ viajes: updated });
@@ -808,7 +828,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // CRUD Vehicles
   const addVehicle = async (vehData: Omit<Vehicle, 'id' | 'documentos' | 'combustible'>) => {
-    const newVeh = await api.createVehicle(vehData);
+    const created = await api.createVehicle(vehData);
+    const newVeh: Vehicle = created || {
+      id: 'veh_' + Date.now().toString(36),
+      documentos: [],
+      combustible: [],
+      mantenimientos: [],
+      gastos: [],
+      ...vehData,
+    };
     const updated = [...vehiculos, newVeh];
     setVehiculos(updated);
     saveState({ vehiculos: updated });
@@ -816,19 +844,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const editVehicle = async (id: string, vehData: Partial<Vehicle>) => {
-    const updatedVeh = await api.updateVehicle(id, vehData);
-    const updated = vehiculos.map((v) => (v.id === id ? updatedVeh : v));
+    const serverRes = await api.updateVehicle(id, vehData);
+    const updated = vehiculos.map((v) => (v.id === id ? (serverRes || { ...v, ...vehData }) : v));
     setVehiculos(updated);
     saveState({ vehiculos: updated });
     showToastMessage('Datos de vehículo actualizados');
   };
 
   const removeVehicle = async (id: string) => {
-    await api.deleteVehicle(id);
+    try {
+      await api.deleteVehicle(id);
+    } catch (e) {
+      console.warn('Remove vehicle API error:', e);
+    }
     const updated = vehiculos.filter((v) => v.id !== id);
     setVehiculos(updated);
     saveState({ vehiculos: updated });
-    showToastMessage('Vehículo eliminado');
+    showToastMessage('Vehículo eliminado de la flota');
   };
 
   // Vehicle sub-items

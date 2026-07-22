@@ -23,30 +23,45 @@ export async function fetchClients(): Promise<Client[]> {
   }
 }
 
-export async function createClient(client: Partial<Client>): Promise<Client> {
-  const res = await fetch(`${API_BASE}/clients`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(client),
-  });
-  const json = await res.json();
-  return json.data;
+export async function createClient(client: Partial<Client>): Promise<Client | null> {
+  try {
+    const res = await fetch(`${API_BASE}/clients`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(client),
+    });
+    const json = await res.json();
+    return json.data;
+  } catch (e) {
+    console.warn('createClient API error:', e);
+    return null;
+  }
 }
 
-export async function updateClient(id: string, client: Partial<Client>): Promise<Client> {
-  const res = await fetch(`${API_BASE}/clients/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(client),
-  });
-  const json = await res.json();
-  return json.data;
+export async function updateClient(id: string, client: Partial<Client>): Promise<Client | null> {
+  try {
+    const res = await fetch(`${API_BASE}/clients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(client),
+    });
+    const json = await res.json();
+    return json.data;
+  } catch (e) {
+    console.warn('updateClient API error:', e);
+    return null;
+  }
 }
 
 export async function deleteClient(id: string): Promise<boolean> {
-  const res = await fetch(`${API_BASE}/clients/${id}`, { method: 'DELETE' });
-  const json = await res.json();
-  return json.success;
+  try {
+    const res = await fetch(`${API_BASE}/clients/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    return json.success === true;
+  } catch (e) {
+    console.warn('deleteClient API error:', e);
+    return false;
+  }
 }
 
 export async function fetchTrips(): Promise<Trip[]> {
@@ -59,30 +74,45 @@ export async function fetchTrips(): Promise<Trip[]> {
   }
 }
 
-export async function createTrip(trip: Partial<Trip>): Promise<Trip> {
-  const res = await fetch(`${API_BASE}/trips`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(trip),
-  });
-  const json = await res.json();
-  return json.data;
+export async function createTrip(trip: Partial<Trip>): Promise<Trip | null> {
+  try {
+    const res = await fetch(`${API_BASE}/trips`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(trip),
+    });
+    const json = await res.json();
+    return json.data;
+  } catch (e) {
+    console.warn('createTrip API error:', e);
+    return null;
+  }
 }
 
-export async function updateTrip(id: string, trip: Partial<Trip>): Promise<Trip> {
-  const res = await fetch(`${API_BASE}/trips/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(trip),
-  });
-  const json = await res.json();
-  return json.data;
+export async function updateTrip(id: string, trip: Partial<Trip>): Promise<Trip | null> {
+  try {
+    const res = await fetch(`${API_BASE}/trips/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(trip),
+    });
+    const json = await res.json();
+    return json.data;
+  } catch (e) {
+    console.warn('updateTrip API error:', e);
+    return null;
+  }
 }
 
 export async function deleteTrip(id: string): Promise<boolean> {
-  const res = await fetch(`${API_BASE}/trips/${id}`, { method: 'DELETE' });
-  const json = await res.json();
-  return json.success;
+  try {
+    const res = await fetch(`${API_BASE}/trips/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    return json.success === true;
+  } catch (e) {
+    console.warn('deleteTrip API error:', e);
+    return false;
+  }
 }
 
 export async function fetchVehicles(): Promise<Vehicle[]> {
@@ -95,30 +125,45 @@ export async function fetchVehicles(): Promise<Vehicle[]> {
   }
 }
 
-export async function createVehicle(veh: Partial<Vehicle>): Promise<Vehicle> {
-  const res = await fetch(`${API_BASE}/vehicles`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(veh),
-  });
-  const json = await res.json();
-  return json.data;
+export async function createVehicle(veh: Partial<Vehicle>): Promise<Vehicle | null> {
+  try {
+    const res = await fetch(`${API_BASE}/vehicles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(veh),
+    });
+    const json = await res.json();
+    return json.data;
+  } catch (e) {
+    console.warn('createVehicle API error:', e);
+    return null;
+  }
 }
 
-export async function updateVehicle(id: string, veh: Partial<Vehicle>): Promise<Vehicle> {
-  const res = await fetch(`${API_BASE}/vehicles/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(veh),
-  });
-  const json = await res.json();
-  return json.data;
+export async function updateVehicle(id: string, veh: Partial<Vehicle>): Promise<Vehicle | null> {
+  try {
+    const res = await fetch(`${API_BASE}/vehicles/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(veh),
+    });
+    const json = await res.json();
+    return json.data;
+  } catch (e) {
+    console.warn('updateVehicle API error:', e);
+    return null;
+  }
 }
 
 export async function deleteVehicle(id: string): Promise<boolean> {
-  const res = await fetch(`${API_BASE}/vehicles/${id}`, { method: 'DELETE' });
-  const json = await res.json();
-  return json.success;
+  try {
+    const res = await fetch(`${API_BASE}/vehicles/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    return json.success === true;
+  } catch (e) {
+    console.warn('deleteVehicle API error:', e);
+    return false;
+  }
 }
 
 export async function fetchAccounts(): Promise<BankAccount[]> {
