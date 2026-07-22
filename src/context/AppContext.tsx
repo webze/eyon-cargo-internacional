@@ -14,6 +14,15 @@ import {
   AppThemeConfig,
   DailyBackup,
 } from '../types';
+import {
+  INITIAL_CLIENTS,
+  INITIAL_TRIPS,
+  INITIAL_VEHICLES,
+  INITIAL_ACCOUNTS,
+  INITIAL_DEBTS,
+  INITIAL_PAYMENTS,
+  INITIAL_PARTNERS,
+} from '../data/initialData';
 import * as api from '../services/api';
 import { hashPassword } from '../utils/crypto';
 
@@ -137,12 +146,13 @@ interface AppContextType {
   removePartner: (id: string) => Promise<void>;
   addPartnerPayout: (partnerId: string, payout: { fecha: string; monto: number; concepto: string }) => Promise<void>;
 
-  // External Sync
+  // External Sync & Demo
   setSheetsUrl: (url: string) => void;
   pushToSheets: (silent?: boolean) => Promise<void>;
   pullFromSheets: () => Promise<void>;
   exportBackupJson: () => void;
   importBackupJson: (file: File) => Promise<void>;
+  restoreDemoData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -335,6 +345,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
           loadedPagos = parsed.pagos || [];
           loadedSocios = parsed.socios || [];
         }
+      }
+
+      // If empty (e.g. first run or GitHub Pages SPA), populate with rich pre-filled demo data
+      if (
+        loadedClientes.length === 0 &&
+        loadedVehiculos.length === 0 &&
+        loadedCuentas.length === 0
+      ) {
+        loadedClientes = INITIAL_CLIENTS;
+        loadedViajes = INITIAL_TRIPS;
+        loadedVehiculos = INITIAL_VEHICLES;
+        loadedCuentas = INITIAL_ACCOUNTS;
+        loadedDeudas = INITIAL_DEBTS;
+        loadedPagos = INITIAL_PAYMENTS;
+        loadedSocios = INITIAL_PARTNERS;
+
+        const initialDataSet = {
+          clientes: INITIAL_CLIENTS,
+          viajes: INITIAL_TRIPS,
+          vehiculos: INITIAL_VEHICLES,
+          cuentas: INITIAL_ACCOUNTS,
+          deudas: INITIAL_DEBTS,
+          pagos: INITIAL_PAYMENTS,
+          socios: INITIAL_PARTNERS,
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(initialDataSet));
+        api.syncFullState(initialDataSet).catch(() => {});
       }
 
       setClientes(loadedClientes);
@@ -980,6 +1017,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const restoreDemoData = async () => {
+    setClientes(INITIAL_CLIENTS);
+    setViajes(INITIAL_TRIPS);
+    setVehiculos(INITIAL_VEHICLES);
+    setCuentas(INITIAL_ACCOUNTS);
+    setDeudas(INITIAL_DEBTS);
+    setPagos(INITIAL_PAYMENTS);
+    setSocios(INITIAL_PARTNERS);
+
+    const demoState = {
+      clientes: INITIAL_CLIENTS,
+      viajes: INITIAL_TRIPS,
+      vehiculos: INITIAL_VEHICLES,
+      cuentas: INITIAL_ACCOUNTS,
+      deudas: INITIAL_DEBTS,
+      pagos: INITIAL_PAYMENTS,
+      socios: INITIAL_PARTNERS,
+    };
+    await saveState(demoState);
+    showToastMessage('Datos de muestra completados (Tráilers, BCP, Deudas) cargados con éxito');
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1056,6 +1115,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         pullFromSheets,
         exportBackupJson,
         importBackupJson,
+        restoreDemoData,
       }}
     >
       {children}

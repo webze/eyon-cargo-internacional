@@ -20,6 +20,7 @@ export default function SettingsView() {
     restoreDailyBackup,
     downloadDailyBackup,
     createManualBackup,
+    restoreDemoData,
   } = useApp();
 
   const [currentPass, setCurrentPass] = useState('');
@@ -336,7 +337,7 @@ export default function SettingsView() {
       <div className="bg-[#212933] border border-[#2e3944] rounded-2xl p-6 space-y-4">
         <h3 className="font-bold text-slate-100 text-base flex items-center gap-2">
           <Download className="w-5 h-5 text-amber-400" />
-          Respaldo Local de Datos (.JSON)
+          Respaldo Local de Datos (.JSON) y Datos de Ejemplo
         </h3>
 
         <div className="flex items-center gap-3 flex-wrap pt-1">
@@ -360,6 +361,18 @@ export default function SettingsView() {
               className="absolute inset-0 opacity-0 cursor-pointer"
             />
           </label>
+
+          <button
+            onClick={() => {
+              if (window.confirm('¿Deseas recargar los datos de muestra de tráilers, clientes mineros, BCP y deudas de ejemplo? Esto sobreescribirá los datos actuales.')) {
+                restoreDemoData();
+              }
+            }}
+            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 cursor-pointer transition-all shadow-md shadow-amber-500/10 ml-auto"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Cargar / Restaurar Datos de Ejemplo (Tráilers, BCP, Deudas)</span>
+          </button>
         </div>
       </div>
     </div>
