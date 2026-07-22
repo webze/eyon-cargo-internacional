@@ -299,14 +299,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Initial fetch from backend API
     loadAllData();
 
-    // Poll live events every 5 seconds
-    const interval = setInterval(() => {
+    // Setup real-time SSE stream for instant cross-device updates (Cell, PC, Laptop)
+    let eventSource: EventSource | null = null;
+    let isSubscribed = true;
+
+    const connectStream = () => {
+      try {
+        eventSource = new EventSource('/api/v1/sync/stream');
+        eventSource.onmessage = (e) => {
+          if (!isSubscribed) return;
+          try {
+            const data = JSON.parse(e.data);
+            if (data.type === 'SYNC_UPDATE') {
+              loadAllDataSilently();
+            }
+          } catch {
+            // ignore
+          }
+        };
+        eventSource.onerror = () => {
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          setTimeout(() => {
+            if (isSubscribed) connectStream();
+          }, 4000);
+        };
+      } catch {
+        // fallback
+      }
+    };
+
+    connectStream();
+
+    // Heartbeat poll every 3 seconds for instant fallback sync across all devices
+    const syncInterval = setInterval(() => {
+      loadAllDataSilently();
       api.fetchEvents().then((evs) => {
         if (evs && evs.length) setEvents(evs);
       });
-    }, 5000);
+    }, 3000);
 
-    return () => clearInterval(interval);
+    // Auto re-sync when switching tabs or turning on mobile screen
+    const handleFocusSync = () => {
+      loadAllDataSilently();
+    };
+
+    window.addEventListener('focus', handleFocusSync);
+    document.addEventListener('visibilitychange', handleFocusSync);
+
+    return () => {
+      isSubscribed = false;
+      if (eventSource) eventSource.close();
+      clearInterval(syncInterval);
+      window.removeEventListener('focus', handleFocusSync);
+      document.removeEventListener('visibilitychange', handleFocusSync);
+    };
   }, []);
 
   const showToastMessage = (msg: string) => {
@@ -374,6 +423,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       console.error('Error handling auto daily backup', e);
+    }
+  };
+
+  const loadAllDataSilently = async () => {
+    try {
+      const serverState = await api.fetchFullSyncState();
+      if (serverState) {
+        if (serverState.clientes) setClientes(serverState.clientes);
+        if (serverState.viajes) setViajes(serverState.viajes);
+        if (serverState.vehiculos) setVehiculos(serverState.vehiculos);
+        if (serverState.cuentas) setCuentas(serverState.cuentas);
+        if (serverState.deudas) setDeudas(serverState.deudas);
+        if (serverState.pagos) setPagos(serverState.pagos);
+        if (serverState.socios) setSocios(serverState.socios);
+
+        const fullData = {
+          clientes: serverState.clientes || [],
+          viajes: serverState.viajes || [],
+          vehiculos: serverState.vehiculos || [],
+          cuentas: serverState.cuentas || [],
+          deudas: serverState.deudas || [],
+          pagos: serverState.pagos || [],
+          socios: serverState.socios || [],
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(fullData));
+        setLastSyncTime(new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }));
+      }
+
+      const authStatus = await api.fetchAuthStatus();
+      if (authStatus && authStatus.configured && authStatus.username) {
+        setHasConfiguredUser(true);
+        setConfiguredUsername(authStatus.username);
+        localStorage.setItem(AUTH_USER_KEY, authStatus.username);
+      }
+    } catch {
+      // silent
     }
   };
 
