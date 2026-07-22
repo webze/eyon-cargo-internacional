@@ -79,6 +79,7 @@ interface AppContextType {
   hasConfiguredPin: boolean;
   hasConfiguredUser: boolean;
   configuredUsername: string;
+  authLoading: boolean;
   sheetsUrl: string;
   toast: string | null;
   syncing: boolean;
@@ -101,7 +102,7 @@ interface AppContextType {
   setupInitialPin: (pin: string) => void;
   setupInitialUser: (username: string, pass: string) => Promise<void>;
   loginWithCredentials: (username: string, pass: string) => Promise<boolean>;
-  updatePassword: (currentPass: string, newPass: string) => Promise<boolean>;
+  updatePassword: (currentPass: string, newPass: string, newUsername?: string) => Promise<boolean>;
   logout: () => void;
   updatePin: (newPin: string) => void;
   showToastMessage: (msg: string) => void;
@@ -213,6 +214,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [hasConfiguredPin, setHasConfiguredPin] = useState<boolean>(false);
   const [hasConfiguredUser, setHasConfiguredUser] = useState<boolean>(false);
   const [configuredUsername, setConfiguredUsername] = useState<string>('');
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [sheetsUrl, setSheetsUrlState] = useState<string>('');
   const [toast, setToast] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<boolean>(false);
@@ -386,12 +388,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let loadedSocios: Partner[] = [];
 
     try {
+      setAuthLoading(true);
       // Sync auth status with backend server so all devices share the same single user setup
       const authStatus = await api.fetchAuthStatus();
       if (authStatus && authStatus.configured) {
         setHasConfiguredUser(true);
-        setConfiguredUsername(authStatus.username);
-        localStorage.setItem(AUTH_USER_KEY, authStatus.username);
+        setConfiguredUsername(authStatus.username || 'admin');
+        localStorage.setItem(AUTH_USER_KEY, authStatus.username || 'admin');
       } else {
         const savedUser = localStorage.getItem(AUTH_USER_KEY);
         const savedPassHash = localStorage.getItem(AUTH_PASS_KEY);
@@ -399,9 +402,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setHasConfiguredUser(true);
           setConfiguredUsername(savedUser);
           api.setupAuthServer(savedUser, savedPassHash).catch(() => {});
+        } else {
+          // Si no hay configuración previa, el servidor auto-configura 'admin'
+          setHasConfiguredUser(true);
+          setConfiguredUsername('admin');
+          localStorage.setItem(AUTH_USER_KEY, 'admin');
         }
       }
+    } catch {
+      setHasConfiguredUser(true);
+      setConfiguredUsername('admin');
+    } finally {
+      setAuthLoading(false);
+    }
 
+    try {
       // First try full server state
       const serverState = await api.fetchFullSyncState();
       if (serverState) {
@@ -561,11 +576,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
-  const updatePassword = async (currentPass: string, newPass: string): Promise<boolean> => {
+  const updatePassword = async (currentPass: string, newPass: string, newUsername?: string): Promise<boolean> => {
     const currentHash = await hashPassword(currentPass);
     const newHash = await hashPassword(newPass);
+    const cleanUser = newUsername ? newUsername.trim() : configuredUsername;
 
-    const serverOk = await api.updatePasswordServer(currentHash, newHash);
+    const serverOk = await api.updatePasswordServer(currentHash, newHash, cleanUser);
     if (!serverOk) {
       const savedPassHash = localStorage.getItem(AUTH_PASS_KEY);
       if (savedPassHash && currentHash !== savedPassHash) {
@@ -574,8 +590,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    if (cleanUser) {
+      setConfiguredUsername(cleanUser);
+      localStorage.setItem(AUTH_USER_KEY, cleanUser);
+    }
     localStorage.setItem(AUTH_PASS_KEY, newHash);
-    showToastMessage('Contraseña encriptada actualizada correctamente en el servidor');
+    showToastMessage('Credenciales de Administrador actualizadas correctamente en el servidor');
     return true;
   };
 
@@ -1458,6 +1478,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         hasConfiguredPin,
         hasConfiguredUser,
         configuredUsername,
+        authLoading,
         sheetsUrl,
         toast,
         syncing,

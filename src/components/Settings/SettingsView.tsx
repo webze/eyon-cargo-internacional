@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Settings, Shield, SlidersHorizontal, Cloud, Download, Upload, Key, Check, Github, EyeOff, Lock, CheckCircle2, UserCheck, History, RefreshCw, CalendarCheck, RotateCcw, ExternalLink } from 'lucide-react';
 
@@ -32,15 +32,22 @@ export default function SettingsView() {
 
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
+  const [adminUsername, setAdminUsername] = useState(configuredUsername || 'admin');
   const [tempSheetsUrl, setTempSheetsUrl] = useState(sheetsUrl);
   const [anonConfirm, setAnonConfirm] = useState(false);
+
+  useEffect(() => {
+    if (configuredUsername) {
+      setAdminUsername(configuredUsername);
+    }
+  }, [configuredUsername]);
 
   const handleChangePassword = async () => {
     if (!newPass || newPass.length < 4) {
       alert('La nueva contraseña debe tener al menos 4 caracteres.');
       return;
     }
-    const ok = await updatePassword(currentPass, newPass);
+    const ok = await updatePassword(currentPass, newPass, adminUsername);
     if (ok) {
       setCurrentPass('');
       setNewPass('');
@@ -255,13 +262,26 @@ export default function SettingsView() {
       <div className="bg-[#212933] border border-[#2e3944] rounded-2xl p-6 space-y-4">
         <h3 className="font-bold text-slate-100 text-base flex items-center gap-2">
           <Shield className="w-5 h-5 text-amber-400" />
-          <span>Credenciales y Seguridad (SHA-256 Encriptado)</span>
+          <span>Gestión de Usuario y Seguridad Administrador</span>
         </h3>
-        <p className="text-xs text-slate-400">
-          Usuario activo: <strong className="text-amber-300 font-mono">{configuredUsername || 'Configurado'}</strong>. La contraseña vive encriptada en tu navegador de forma local.
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Usuario Administrador activo: <strong className="text-amber-300 font-mono">{configuredUsername || 'admin'}</strong>. Las credenciales se guardan de forma centralizada y segura encriptadas con SHA-256 para que puedas ingresar desde cualquier celular o equipo.
         </p>
 
         <div className="space-y-3 max-w-md pt-1">
+          <div>
+            <label className="block text-[11px] text-slate-400 uppercase font-semibold mb-1">
+              Nombre de Usuario Administrador
+            </label>
+            <input
+              type="text"
+              value={adminUsername}
+              onChange={(e) => setAdminUsername(e.target.value)}
+              placeholder="Ej. admin"
+              className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 text-xs focus:outline-none focus:border-amber-500 font-medium"
+            />
+          </div>
+
           <div>
             <label className="block text-[11px] text-slate-400 uppercase font-semibold mb-1">
               Contraseña Actual
@@ -293,7 +313,7 @@ export default function SettingsView() {
             className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs cursor-pointer flex items-center gap-2 shadow-md shadow-amber-500/10"
           >
             <Lock className="w-4 h-4" />
-            <span>Actualizar Contraseña Encriptada</span>
+            <span>Guardar Credenciales de Administrador</span>
           </button>
         </div>
       </div>

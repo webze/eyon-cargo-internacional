@@ -296,12 +296,12 @@ export async function loginAuthServer(username: string, passwordHash: string): P
   }
 }
 
-export async function updatePasswordServer(currentHash: string, newHash: string): Promise<boolean> {
+export async function updatePasswordServer(currentHash: string, newHash: string, newUsername?: string): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}/auth/password`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentHash, newHash }),
+      body: JSON.stringify({ currentHash, newHash, newUsername }),
     });
     const json = await res.json();
     return json.success === true;

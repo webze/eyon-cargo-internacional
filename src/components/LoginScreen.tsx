@@ -1,80 +1,103 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { ShieldCheck, Truck, KeyRound, Lock, User, ShieldAlert, CheckCircle2, Key, Info } from 'lucide-react';
+import { ShieldCheck, Truck, KeyRound, Lock, User, ShieldAlert, CheckCircle2, Key, Info, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 /**
  * ============================================================================
- * COMPONENTE: LoginScreen (Pantalla de Autenticación y Registro Único)
+ * COMPONENTE: LoginScreen (Pantalla de Autenticación Única Administrador)
  * ============================================================================
  * @description
- * Administra el acceso seguro a la plataforma EYON Cargo Internacional.
- * Lógica de comportamiento:
- * 1. Si NO existe un usuario registrado en el navegador (`hasConfiguredUser === false`),
- *    muestra el formulario de REGISTRO ÚNICO INICIAL (Usuario + Clave + Confirmación).
- * 2. Una vez guardado el usuario, esa pantalla NUNCA MÁS vuelve a aparecer.
- * 3. En accesos posteriores, muestra únicamente el inicio de sesión estándar.
+ * Administra el acceso seguro y centralizado a la plataforma EYON Cargo.
+ * Permite ingresar con el usuario y contraseña del Administrador único desde
+ * cualquier celular, computadora o dispositivo.
  * ============================================================================
  */
 export default function LoginScreen() {
-  const { hasConfiguredUser, setupInitialUser, loginWithCredentials, configuredUsername } = useApp();
+  const { authLoading, hasConfiguredUser, setupInitialUser, loginWithCredentials, configuredUsername } = useApp();
 
-  // Estados locales para el formulario
-  const [username, setUsername] = useState(configuredUsername || '');
+  // Estados locales
+  const [username, setUsername] = useState(configuredUsername || 'admin');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<'login' | 'register'>('login');
 
-  /**
-   * Procesa el envío del formulario según el modo (Registro Único vs Login)
-   */
+  useEffect(() => {
+    if (configuredUsername) {
+      setUsername(configuredUsername);
+    }
+  }, [configuredUsername]);
+
+  useEffect(() => {
+    if (!hasConfiguredUser && !authLoading) {
+      setMode('register');
+    } else {
+      setMode('login');
+    }
+  }, [hasConfiguredUser, authLoading]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!hasConfiguredUser) {
-      // ----------------- MODO 1: REGISTRO ÚNICO INICIAL -----------------
-      if (!username.trim()) {
-        setError('Por favor ingresa un nombre de usuario.');
-        return;
-      }
+    const cleanUser = username.trim();
+    if (!cleanUser) {
+      setError('Por favor ingresa un nombre de usuario.');
+      return;
+    }
+    if (!password) {
+      setError('Por favor ingresa la contraseña.');
+      return;
+    }
+
+    if (mode === 'register') {
       if (password.length < 4) {
         setError('La contraseña debe tener al menos 4 caracteres.');
         return;
       }
       if (password !== confirmPassword) {
-        setError('Las contraseñas no coinciden.');
+        setError('Las contraseñas de confirmación no coinciden.');
         return;
       }
 
       setLoading(true);
       try {
-        await setupInitialUser(username, password);
+        await setupInitialUser(cleanUser, password);
       } catch (err: any) {
-        setError('Error al registrar usuario: ' + (err.message || 'Intente nuevamente'));
+        setError('Error al guardar credenciales: ' + (err.message || 'Intente nuevamente'));
       } finally {
         setLoading(false);
       }
     } else {
-      // ----------------- MODO 2: INICIO DE SESIÓN ESTÁNDAR -----------------
-      if (!username.trim() || !password) {
-        setError('Por favor ingresa usuario y contraseña.');
-        return;
-      }
-
       setLoading(true);
       try {
-        const success = await loginWithCredentials(username, password);
+        const success = await loginWithCredentials(cleanUser, password);
         if (!success) {
-          setError('Usuario o contraseña incorrectos.');
+          setError('Usuario o contraseña incorrectos. Verifica que sean idénticos a los guardados.');
         }
       } catch (err: any) {
-        setError('Error al iniciar sesión: ' + (err.message || 'Intente nuevamente'));
+        setError('Error al ingresar: ' + (err.message || 'Intente nuevamente'));
       } finally {
         setLoading(false);
       }
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen w-full bg-[#14181c] flex items-center justify-center p-4 text-slate-100">
+        <div className="bg-[#1b2127] border border-[#2e3944] rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 max-w-sm text-center">
+          <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
+          <div>
+            <h2 className="text-base font-bold text-slate-200 mb-1">Verificando Seguridad...</h2>
+            <p className="text-xs text-slate-400">Sincronizando cuenta del servidor central</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-[#14181c] flex items-center justify-center p-4 relative overflow-hidden text-slate-100">
@@ -82,7 +105,7 @@ export default function LoginScreen() {
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md bg-[#1b2127] border border-[#2e3944] rounded-2xl p-8 shadow-2xl relative z-10">
+      <div className="w-full max-w-md bg-[#1b2127] border border-[#2e3944] rounded-2xl p-6 sm:p-8 shadow-2xl relative z-10">
         {/* Isotipo y Marca */}
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-xl bg-amber-500 text-slate-900 flex items-center justify-center font-bold text-2xl shadow-lg shadow-amber-500/20">
@@ -96,36 +119,43 @@ export default function LoginScreen() {
           </div>
         </div>
 
-        {/* Banners Informativos */}
-        {!hasConfiguredUser ? (
-          <>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-lg text-xs font-bold mb-4">
-              <ShieldAlert className="w-4 h-4 text-amber-400 flex-shrink-0" />
-              <span>Registro Único Inicial (Paso 1 de 1)</span>
+        {/* Encabezado e Indicadores */}
+        <div className="mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold mb-3">
+            <Lock className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+            <span>Un Solo Administrador Central (Acceso Multidispositivo)</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-100 mb-1">
+            {mode === 'login' ? 'Iniciar Sesión' : 'Configurar Cuenta Admin Única'}
+          </h1>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            {mode === 'login'
+              ? 'Ingresa con tu usuario y contraseña. La misma cuenta funciona en tu celular, computadora y cualquier navegador.'
+              : 'Configura el usuario y contraseña principales para proteger el sistema en todos tus dispositivos.'}
+          </p>
+        </div>
+
+        {/* Banner Informativo de Credenciales Predeterminadas */}
+        {mode === 'login' && (
+          <div className="mb-5 p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-slate-300 leading-relaxed space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-amber-400">
+              <Info className="w-4 h-4 flex-shrink-0" />
+              <span>Acceso de Fábrica del Sistema:</span>
             </div>
-            <h1 className="text-xl font-bold text-slate-100 mb-2">Crear Usuario y Clave Encriptada</h1>
-            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-              Esta pantalla de registro se configura <strong className="text-slate-200">una sola vez para todo el sistema</strong>. La cuenta y contraseña creadas quedaran guardadas centralmente en el servidor para que puedas ingresar desde cualquier otro equipo con estas mismas credenciales.
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold mb-4">
-              <Lock className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-              <span>Autenticación Encriptada (SHA-256)</span>
+            <div className="font-mono text-[11px] text-amber-200/90 pl-5">
+              Usuario: <strong className="text-amber-300">{configuredUsername || 'admin'}</strong> | Clave inicial: <strong className="text-amber-300">admin</strong>
             </div>
-            <h1 className="text-2xl font-bold text-slate-100 mb-2">Iniciar Sesión</h1>
-            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-              Ingresa tus credenciales registradas para acceder a la gestión de flota y finanzas.
+            <p className="text-[11px] text-slate-400 pl-5">
+              (Si cambiaste la clave previamente desde Configuración, usa tu nueva clave)
             </p>
-          </>
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Campo Nombre de Usuario */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-              Nombre de Usuario
+              Usuario Administrador
             </label>
             <div className="relative">
               <input
@@ -137,7 +167,8 @@ export default function LoginScreen() {
                 }}
                 placeholder="Ej. admin"
                 className="w-full pl-10 pr-4 py-3 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-sm font-medium"
-                autoFocus={!hasConfiguredUser}
+                autoCapitalize="none"
+                autoCorrect="off"
               />
               <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
             </div>
@@ -146,40 +177,47 @@ export default function LoginScreen() {
           {/* Campo Contraseña */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-              {!hasConfiguredUser ? 'Crear Contraseña Privada' : 'Contraseña'}
+              Contraseña
             </label>
             <div className="relative">
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
                   setError(null);
                 }}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-3 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-sm tracking-widest"
-                autoFocus={hasConfiguredUser}
+                className="w-full pl-10 pr-12 py-3 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-sm font-medium"
               />
               <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-200 p-0.5 cursor-pointer"
+                title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
-          {/* Campo Confirmar Contraseña (Solo en primer registro) */}
-          {!hasConfiguredUser && (
+          {/* Campo Confirmar Contraseña (Solo en registro) */}
+          {mode === 'register' && (
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                 Confirmar Contraseña
               </label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => {
                     setConfirmPassword(e.target.value);
                     setError(null);
                   }}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-3 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-sm tracking-widest"
+                  className="w-full pl-10 pr-4 py-3 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-sm font-medium"
                 />
                 <Key className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
               </div>
@@ -188,8 +226,8 @@ export default function LoginScreen() {
 
           {/* Mensaje de Error */}
           {error && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-medium leading-tight flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 flex-shrink-0 text-rose-400" />
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-medium leading-relaxed flex items-start gap-2">
+              <ShieldAlert className="w-4 h-4 flex-shrink-0 text-rose-400 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
@@ -198,35 +236,58 @@ export default function LoginScreen() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 px-4 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer mt-2 text-sm"
+            className="w-full py-3.5 px-4 bg-amber-500 hover:bg-amber-400 active:scale-[0.99] disabled:opacity-50 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer mt-2 text-sm"
           >
-            {!hasConfiguredUser ? (
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Validando Credenciales...</span>
+              </>
+            ) : mode === 'register' ? (
               <>
                 <CheckCircle2 className="w-4 h-4" />
-                {loading ? 'Creando Usuario Encriptado...' : 'Guardar Usuario e Iniciar'}
+                <span>Guardar Credenciales de Administrador</span>
               </>
             ) : (
               <>
                 <KeyRound className="w-4 h-4" />
-                {loading ? 'Verificando Hash...' : 'Ingresar al Sistema'}
+                <span>Ingresar al Sistema</span>
               </>
             )}
           </button>
         </form>
 
-        {!hasConfiguredUser && (
-          <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl flex items-start gap-2 text-[11px] text-amber-300/80 leading-relaxed">
-            <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-            <span>
-              <strong>Importante:</strong> Esta cuenta de usuario es única y personal. Guarda tus credenciales en un lugar seguro.
-            </span>
-          </div>
-        )}
+        {/* Alternar modo de inicio/registro si es necesario */}
+        <div className="mt-4 pt-4 border-t border-[#2e3944]/60 flex items-center justify-between text-xs">
+          {mode === 'login' ? (
+            <button
+              type="button"
+              onClick={() => {
+                setMode('register');
+                setError(null);
+              }}
+              className="text-amber-400 hover:text-amber-300 font-medium cursor-pointer underline underline-offset-2"
+            >
+              ¿Deseas cambiar o recrear la cuenta Administrador?
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setError(null);
+              }}
+              className="text-amber-400 hover:text-amber-300 font-medium cursor-pointer underline underline-offset-2"
+            >
+              Volver al inicio de sesión habitual
+            </button>
+          )}
+        </div>
 
-        <div className="mt-8 pt-6 border-t border-[#2e3944]/60 flex items-center justify-between text-xs text-slate-500">
+        <div className="mt-6 pt-4 border-t border-[#2e3944]/40 flex items-center justify-between text-xs text-slate-500">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            Seguridad Local Crypto
+            Hash Encriptado Central
           </span>
           <span className="flex items-center gap-1.5">
             <Truck className="w-4 h-4 text-amber-500" />

@@ -1,8 +1,14 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { EventEmitter } from "events";
 import { createServer as createViteServer } from "vite";
+
+// Hash helper for server-side auth verification matching client crypto salt
+function hashPasswordServer(password: string): string {
+  return crypto.createHash("sha256").update(`eyon_cargo_secure_salt_v1_${password}`).digest("hex");
+}
 
 // File Path for Server Database Disk Persistence
 const DB_FILE = path.join(process.cwd(), "server_data_store.json");
@@ -358,6 +364,16 @@ function saveDatabaseToDisk() {
 // Cargar estado guardado al iniciar
 loadDatabaseFromDisk();
 
+// Asegurar que exista al menos un usuario admin central de fábrica si la base de datos está vacía
+if (!database.auth || !database.auth.configured || !database.auth.username) {
+  database.auth = {
+    configured: true,
+    username: "admin",
+    passwordHash: hashPasswordServer("admin"),
+  };
+  saveDatabaseToDisk();
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -366,11 +382,19 @@ async function startServer() {
 
   // API Routes - Auth & Single User Credentials Microservice
   app.get("/api/v1/auth/status", (req, res) => {
+    if (!database.auth || !database.auth.configured || !database.auth.username) {
+      database.auth = {
+        configured: true,
+        username: "admin",
+        passwordHash: hashPasswordServer("admin"),
+      };
+      saveDatabaseToDisk();
+    }
     res.json({
       success: true,
       data: {
-        configured: Boolean(database.auth?.configured),
-        username: database.auth?.username || "",
+        configured: true,
+        username: database.auth.username,
       },
     });
   });
@@ -393,7 +417,12 @@ async function startServer() {
   app.post("/api/v1/auth/login", (req, res) => {
     const { username, passwordHash } = req.body || {};
     if (!database.auth || !database.auth.configured) {
-      return res.status(400).json({ error: "Aún no hay un usuario registrado en el sistema" });
+      database.auth = {
+        configured: true,
+        username: "admin",
+        passwordHash: hashPasswordServer("admin"),
+      };
+      saveDatabaseToDisk();
     }
     const reqUser = String(username || "").trim().toLowerCase();
     const dbUser = String(database.auth.username || "").trim().toLowerCase();
@@ -407,17 +436,25 @@ async function startServer() {
   });
 
   app.put("/api/v1/auth/password", (req, res) => {
-    const { currentHash, newHash } = req.body || {};
+    const { currentHash, newHash, newUsername } = req.body || {};
     if (!database.auth || !database.auth.configured) {
-      return res.status(400).json({ error: "No hay usuario configurado en el servidor" });
+      database.auth = {
+        configured: true,
+        username: "admin",
+        passwordHash: hashPasswordServer("admin"),
+      };
+      saveDatabaseToDisk();
     }
     if (currentHash !== database.auth.passwordHash) {
       return res.status(401).json({ success: false, error: "La contraseña actual ingresada no coincide" });
     }
+    if (newUsername && String(newUsername).trim()) {
+      database.auth.username = String(newUsername).trim();
+    }
     database.auth.passwordHash = newHash;
     saveDatabaseToDisk();
-    eventBus.publish("AuthService", "PASSWORD_UPDATED", {}, "SUCCESS", "Contraseña encriptada de servidor actualizada con éxito");
-    res.json({ success: true });
+    eventBus.publish("AuthService", "PASSWORD_UPDATED", { username: database.auth.username }, "SUCCESS", "Credenciales de servidor actualizadas con éxito");
+    res.json({ success: true, username: database.auth.username });
   });
 
   // API Routes - Clients Microservice
