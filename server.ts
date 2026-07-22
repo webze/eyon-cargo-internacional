@@ -428,6 +428,7 @@ async function startServer() {
   app.post("/api/v1/clients", (req, res) => {
     const client = { id: "cli_" + Date.now().toString(36), fechaRegistro: new Date().toISOString().slice(0, 10), ...req.body };
     database.clientes.push(client);
+    saveDatabaseToDisk();
     eventBus.publish("ClientMicroservice", "CLIENT_CREATED", client, "SUCCESS", `Cliente [${client.nombre}] registrado`);
     res.status(201).json({ success: true, data: client });
   });
@@ -436,12 +437,14 @@ async function startServer() {
     const index = database.clientes.findIndex((c) => c.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: "Cliente no encontrado" });
     database.clientes[index] = { ...database.clientes[index], ...req.body };
+    saveDatabaseToDisk();
     eventBus.publish("ClientMicroservice", "CLIENT_UPDATED", database.clientes[index], "INFO", `Datos de cliente [${database.clientes[index].nombre}] actualizados`);
     res.json({ success: true, data: database.clientes[index] });
   });
 
   app.delete("/api/v1/clients/:id", (req, res) => {
     database.clientes = database.clientes.filter((c) => c.id !== req.params.id);
+    saveDatabaseToDisk();
     eventBus.publish("ClientMicroservice", "CLIENT_DELETED", { id: req.params.id }, "WARNING", `Cliente #${req.params.id} eliminado`);
     res.json({ success: true });
   });
@@ -453,7 +456,8 @@ async function startServer() {
 
   app.post("/api/v1/trips", (req, res) => {
     const trip = { id: "vj_" + Date.now().toString(36), ...req.body };
-    database.viajes.push(trip);
+    database.viajes.unshift(trip);
+    saveDatabaseToDisk();
     eventBus.publish("TripMicroservice", "TRIP_CREATED", trip, "SUCCESS", `Nuevo viaje [${trip.origen} → ${trip.destino}] asignado`);
     res.status(201).json({ success: true, data: trip });
   });
@@ -464,6 +468,7 @@ async function startServer() {
     const oldStatus = database.viajes[index].estado;
     database.viajes[index] = { ...database.viajes[index], ...req.body };
     const updated = database.viajes[index];
+    saveDatabaseToDisk();
     if (oldStatus !== updated.estado) {
       eventBus.publish("TripMicroservice", "TRIP_STATUS_CHANGED", { tripId: updated.id, from: oldStatus, to: updated.estado }, "INFO", `Estado de viaje #${updated.id} cambió de '${oldStatus}' a '${updated.estado}'`);
     } else {
@@ -474,6 +479,7 @@ async function startServer() {
 
   app.delete("/api/v1/trips/:id", (req, res) => {
     database.viajes = database.viajes.filter((v) => v.id !== req.params.id);
+    saveDatabaseToDisk();
     eventBus.publish("TripMicroservice", "TRIP_DELETED", { id: req.params.id }, "WARNING", `Viaje #${req.params.id} cancelado/eliminado`);
     res.json({ success: true });
   });
@@ -486,6 +492,7 @@ async function startServer() {
   app.post("/api/v1/vehicles", (req, res) => {
     const vehicle = { id: "veh_" + Date.now().toString(36), documentos: [], combustible: [], estado: "Operativo", ...req.body };
     database.vehiculos.push(vehicle);
+    saveDatabaseToDisk();
     eventBus.publish("VehicleMicroservice", "VEHICLE_CREATED", vehicle, "SUCCESS", `Unidad vehicular [${vehicle.placa}] añadida a la flota`);
     res.status(201).json({ success: true, data: vehicle });
   });
@@ -494,12 +501,14 @@ async function startServer() {
     const index = database.vehiculos.findIndex((v) => v.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: "Vehículo no encontrado" });
     database.vehiculos[index] = { ...database.vehiculos[index], ...req.body };
+    saveDatabaseToDisk();
     eventBus.publish("VehicleMicroservice", "VEHICLE_UPDATED", database.vehiculos[index], "INFO", `Ficha de vehículo [${database.vehiculos[index].placa}] actualizada`);
     res.json({ success: true, data: database.vehiculos[index] });
   });
 
   app.delete("/api/v1/vehicles/:id", (req, res) => {
     database.vehiculos = database.vehiculos.filter((v) => v.id !== req.params.id);
+    saveDatabaseToDisk();
     eventBus.publish("VehicleMicroservice", "VEHICLE_DELETED", { id: req.params.id }, "WARNING", `Vehículo #${req.params.id} retirado de flota`);
     res.json({ success: true });
   });
@@ -524,6 +533,7 @@ async function startServer() {
   app.post("/api/v1/finance/payments", (req, res) => {
     const payment = { id: "pag_" + Date.now().toString(36), ...req.body };
     database.pagos.unshift(payment);
+    saveDatabaseToDisk();
     eventBus.publish("FinanceMicroservice", "PAYMENT_RECORDED", payment, "SUCCESS", `Transacción de ${payment.tipo} por S/ ${payment.monto} registrada`);
     res.status(201).json({ success: true, data: payment });
   });

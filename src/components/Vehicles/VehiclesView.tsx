@@ -438,7 +438,7 @@ export default function VehiclesView({ onOpenVehicleModal, onOpenVehDetail }: Ve
                 <span className="font-mono font-bold text-amber-400 bg-[#14181c] px-2 py-0.5 rounded border border-[#2e3944]">
                   {vehicleToDelete.placa}
                 </span>{' '}
-                de la flota. Se eliminarán todos sus documentos de SOAT/CITV y el historial de combustible.
+                de la flota. Se eliminarán sus viajes asignados, documentos de SOAT/CITV y mantenimientos.
               </p>
             </div>
 

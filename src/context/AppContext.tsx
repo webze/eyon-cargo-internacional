@@ -787,10 +787,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.warn('Remove client API error:', e);
     }
-    const updated = clientes.filter((c) => c.id !== id);
-    setClientes(updated);
-    saveState({ clientes: updated });
-    showToastMessage('Cliente eliminado');
+    const updatedClients = clientes.filter((c) => c.id !== id);
+    const updatedViajes = viajes.filter((v) => v.clienteId !== id);
+    setClientes(updatedClients);
+    setViajes(updatedViajes);
+    saveState({ clientes: updatedClients, viajes: updatedViajes });
+    showToastMessage('Cliente y sus fletes/viajes eliminados');
   };
 
   // CRUD Trips
@@ -857,10 +859,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.warn('Remove vehicle API error:', e);
     }
-    const updated = vehiculos.filter((v) => v.id !== id);
-    setVehiculos(updated);
-    saveState({ vehiculos: updated });
-    showToastMessage('Vehículo eliminado de la flota');
+    const targetVeh = vehiculos.find((v) => v.id === id);
+    const updatedVehs = vehiculos.filter((v) => v.id !== id);
+    const updatedViajes = viajes.filter(
+      (v) => v.vehiculoId !== id && (targetVeh ? v.placa !== targetVeh.placa : true)
+    );
+
+    setVehiculos(updatedVehs);
+    setViajes(updatedViajes);
+    saveState({ vehiculos: updatedVehs, viajes: updatedViajes });
+    showToastMessage('Vehículo y sus viajes asociados eliminados');
   };
 
   // Vehicle sub-items

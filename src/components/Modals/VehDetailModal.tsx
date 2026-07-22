@@ -1195,7 +1195,7 @@ export default function VehDetailModal({ vehicleId, onClose }: VehDetailModalPro
                   <span className="font-mono font-bold text-amber-400 bg-[#14181c] px-2 py-0.5 rounded border border-[#2e3944]">
                     {veh.placa}
                   </span>{' '}
-                  de la flota. Se eliminarán sus papeles, ranfla y mantenimientos.
+                  de la flota. Se eliminarán sus viajes, papeles, ranfla y mantenimientos.
                 </p>
               </div>
 

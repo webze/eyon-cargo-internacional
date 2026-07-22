@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, AlertCircle } from 'lucide-react';
 import { TripStatus } from '../../types';
 
 interface TripModalProps {
@@ -22,6 +22,8 @@ export default function TripModal({ tripId, preSelectedClientId, onClose }: Trip
   const [monto, setMonto] = useState<number | ''>('');
   const [guiasRemision, setGuiasRemision] = useState('');
   const [notas, setNotas] = useState('');
+
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (preSelectedClientId) setClienteId(preSelectedClientId);
@@ -70,10 +72,9 @@ export default function TripModal({ tripId, preSelectedClientId, onClose }: Trip
 
   const handleDelete = async () => {
     if (!tripId) return;
-    if (confirm('¿Eliminar este registro de viaje?')) {
-      await removeTrip(tripId);
-      onClose();
-    }
+    await removeTrip(tripId);
+    setShowConfirmDelete(false);
+    onClose();
   };
 
   return (
@@ -88,155 +89,186 @@ export default function TripModal({ tripId, preSelectedClientId, onClose }: Trip
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-slate-400 uppercase font-semibold mb-1">Origen *</label>
-              <input
-                type="text"
-                required
-                value={origen}
-                onChange={(e) => setOrigen(e.target.value)}
-                placeholder="Ej. Lima (Terminal Callao)"
-                className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500"
-              />
+        {showConfirmDelete ? (
+          <div className="space-y-4 py-2">
+            <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-3 text-rose-300">
+              <AlertCircle className="w-6 h-6 flex-shrink-0" />
+              <div>
+                <p className="font-bold text-sm text-slate-100">¿Estás seguro de eliminar este viaje?</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Se eliminará la ruta <b>{origen} → {destino}</b> de forma permanente.
+                </p>
+              </div>
             </div>
-            <div>
-              <label className="block text-slate-400 uppercase font-semibold mb-1">Destino *</label>
-              <input
-                type="text"
-                required
-                value={destino}
-                onChange={(e) => setDestino(e.target.value)}
-                placeholder="Ej. Arequipa (Mina Cerro Verde)"
-                className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500"
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-slate-400 uppercase font-semibold mb-1">Cliente Corporativo</label>
-              <select
-                value={clienteId}
-                onChange={(e) => setClienteId(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500 cursor-pointer"
-              >
-                <option value="">— Seleccionar Cliente —</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-slate-400 uppercase font-semibold mb-1">Unidad de Flota</label>
-              <select
-                value={vehiculoId}
-                onChange={(e) => setVehiculoId(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500 cursor-pointer"
-              >
-                <option value="">— Seleccionar Placa —</option>
-                {vehiculos.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.placa} ({v.tipo})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-slate-400 uppercase font-semibold mb-1">Fecha de Salida *</label>
-              <input
-                type="date"
-                required
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-400 uppercase font-semibold mb-1">Estado Operativo</label>
-              <select
-                value={estado}
-                onChange={(e) => setEstado(e.target.value as TripStatus)}
-                className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500 cursor-pointer"
-              >
-                <option value="Programado">Programado</option>
-                <option value="En curso">En curso</option>
-                <option value="Completado">Completado</option>
-                <option value="Atrasado">Atrasado</option>
-                <option value="Cancelado">Cancelado</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-slate-400 uppercase font-semibold mb-1">Conductor Asignado</label>
-              <input
-                type="text"
-                value={conductor}
-                onChange={(e) => setConductor(e.target.value)}
-                placeholder="Manuel Reyes"
-                className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-400 uppercase font-semibold mb-1">Monto del Flete (S/)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={monto}
-                onChange={(e) => setMonto(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="8500.00"
-                className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 font-mono focus:outline-none focus:border-amber-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-slate-400 uppercase font-semibold mb-1">Guías de Remisión SUNAT</label>
-            <input
-              type="text"
-              value={guiasRemision}
-              onChange={(e) => setGuiasRemision(e.target.value)}
-              placeholder="001-008923 / 001-008924"
-              className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500"
-            />
-          </div>
-
-          <div className="flex items-center justify-between pt-4 border-t border-[#2e3944]">
-            {tripId ? (
+            <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
-                onClick={handleDelete}
-                className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-semibold rounded-xl flex items-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" /> Eliminar
-              </button>
-            ) : <div />}
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 bg-[#262f3a] hover:bg-[#2e3944] text-slate-300 font-semibold rounded-xl cursor-pointer"
+                onClick={() => setShowConfirmDelete(false)}
+                className="px-4 py-2 bg-[#262f3a] hover:bg-[#2e3944] text-slate-300 font-semibold rounded-xl text-xs cursor-pointer"
               >
                 Cancelar
               </button>
               <button
-                type="submit"
-                className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl cursor-pointer shadow-md"
+                type="button"
+                onClick={handleDelete}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-lg shadow-rose-600/30"
               >
-                Guardar Viaje
+                <Trash2 className="w-3.5 h-3.5" /> Sí, Eliminar Viaje
               </button>
             </div>
           </div>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-400 uppercase font-semibold mb-1">Origen *</label>
+                <input
+                  type="text"
+                  required
+                  value={origen}
+                  onChange={(e) => setOrigen(e.target.value)}
+                  placeholder="Ej. Lima (Terminal Callao)"
+                  className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 uppercase font-semibold mb-1">Destino *</label>
+                <input
+                  type="text"
+                  required
+                  value={destino}
+                  onChange={(e) => setDestino(e.target.value)}
+                  placeholder="Ej. Arequipa (Mina Cerro Verde)"
+                  className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-400 uppercase font-semibold mb-1">Cliente Corporativo</label>
+                <select
+                  value={clienteId}
+                  onChange={(e) => setClienteId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500 cursor-pointer"
+                >
+                  <option value="">— Seleccionar Cliente —</option>
+                  {clientes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-400 uppercase font-semibold mb-1">Unidad de Flota</label>
+                <select
+                  value={vehiculoId}
+                  onChange={(e) => setVehiculoId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500 cursor-pointer"
+                >
+                  <option value="">— Seleccionar Placa —</option>
+                  {vehiculos.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.placa} ({v.tipo})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-400 uppercase font-semibold mb-1">Fecha de Salida *</label>
+                <input
+                  type="date"
+                  required
+                  value={fecha}
+                  onChange={(e) => setFecha(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 uppercase font-semibold mb-1">Estado Operativo</label>
+                <select
+                  value={estado}
+                  onChange={(e) => setEstado(e.target.value as TripStatus)}
+                  className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500 cursor-pointer"
+                >
+                  <option value="Programado">Programado</option>
+                  <option value="En curso">En curso</option>
+                  <option value="Completado">Completado</option>
+                  <option value="Atrasado">Atrasado</option>
+                  <option value="Cancelado">Cancelado</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-400 uppercase font-semibold mb-1">Conductor Asignado</label>
+                <input
+                  type="text"
+                  value={conductor}
+                  onChange={(e) => setConductor(e.target.value)}
+                  placeholder="Manuel Reyes"
+                  className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 uppercase font-semibold mb-1">Monto del Flete (S/)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={monto}
+                  onChange={(e) => setMonto(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="8500.00"
+                  className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 font-mono focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-400 uppercase font-semibold mb-1">Guías de Remisión SUNAT</label>
+              <input
+                type="text"
+                value={guiasRemision}
+                onChange={(e) => setGuiasRemision(e.target.value)}
+                placeholder="001-008923 / 001-008924"
+                className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-[#2e3944]">
+              {tripId ? (
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmDelete(true)}
+                  className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-semibold rounded-xl flex items-center gap-1.5 cursor-pointer text-xs"
+                >
+                  <Trash2 className="w-4 h-4" /> Eliminar
+                </button>
+              ) : <div />}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 bg-[#262f3a] hover:bg-[#2e3944] text-slate-300 font-semibold rounded-xl text-xs cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs cursor-pointer shadow-md"
+                >
+                  Guardar Viaje
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

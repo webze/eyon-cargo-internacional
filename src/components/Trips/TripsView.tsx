@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Truck, Search, Plus, MapPin, Calendar, User, DollarSign, FileText, CheckCircle2, Edit } from 'lucide-react';
-import { TripStatus } from '../../types';
+import { Truck, Search, Plus, MapPin, Calendar, User, DollarSign, FileText, CheckCircle2, Edit, Trash2, AlertCircle } from 'lucide-react';
+import { TripStatus, Trip } from '../../types';
 import { formatMoney, maskName } from '../../utils/formatters';
 
 interface TripsViewProps {
@@ -9,9 +9,10 @@ interface TripsViewProps {
 }
 
 export default function TripsView({ onOpenTripModal }: TripsViewProps) {
-  const { viajes, clientes, vehiculos, theme } = useApp();
+  const { viajes, clientes, vehiculos, theme, editTrip, removeTrip, showToastMessage } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [tripToDelete, setTripToDelete] = useState<Trip | null>(null);
 
   const isPrivacy = theme?.privacyMode || false;
   const money = (n: number) => formatMoney(n, isPrivacy);
@@ -21,6 +22,17 @@ export default function TripsView({ onOpenTripModal }: TripsViewProps) {
     const daysLeft = Math.round((new Date(v.fecha + 'T00:00:00').getTime() - Date.now()) / 86400000);
     if (daysLeft < 0) return 'Atrasado';
     return v.estado;
+  };
+
+  const handleMarkCompleted = async (tripId: string) => {
+    await editTrip(tripId, { estado: 'Completado' });
+    showToastMessage('¡Viaje cerrado y marcado como Finalizado!');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!tripToDelete) return;
+    await removeTrip(tripToDelete.id);
+    setTripToDelete(null);
   };
 
   const filtered = viajes.filter((v) => {
@@ -91,7 +103,7 @@ export default function TripsView({ onOpenTripModal }: TripsViewProps) {
             const client = clientes.find((c) => c.id === v.clienteId);
             const veh = vehiculos.find((vh) => vh.id === v.vehiculoId);
             const realStatus = getRealStatus(v);
-            const daysLeft = Math.round((new Date(v.fecha + 'T00:00:00').getTime() - Date.now()) / 86400000);
+            const isCompleted = v.estado === 'Completado';
 
             return (
               <div
@@ -141,7 +153,7 @@ export default function TripsView({ onOpenTripModal }: TripsViewProps) {
                 </div>
 
                 {/* Ticket Stub Right Side */}
-                <div className="bg-[#1b2127] border-t md:border-t-0 md:border-l border-dashed border-[#2e3944] p-5 w-full md:w-56 flex-shrink-0 flex flex-row md:flex-col items-center justify-between gap-3 text-center">
+                <div className="bg-[#1b2127] border-t md:border-t-0 md:border-l border-dashed border-[#2e3944] p-5 w-full md:w-64 flex-shrink-0 flex flex-col justify-between gap-3 text-center">
                   <div className="space-y-1">
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -159,17 +171,77 @@ export default function TripsView({ onOpenTripModal }: TripsViewProps) {
                     <div className="text-lg font-bold font-mono text-slate-100">{money(v.monto)}</div>
                   </div>
 
-                  <button
-                    onClick={() => onOpenTripModal(v.id)}
-                    className="px-3.5 py-1.5 bg-[#262f3a] hover:bg-[#2e3944] text-slate-200 text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Edit className="w-3.5 h-3.5" />
-                    Editar
-                  </button>
+                  <div className="flex items-center justify-center gap-2 flex-wrap pt-2">
+                    {!isCompleted && (
+                      <button
+                        onClick={() => handleMarkCompleted(v.id)}
+                        title="Cerrar/Finalizar viaje"
+                        className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Finalizado
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => onOpenTripModal(v.id)}
+                      className="px-3 py-1.5 bg-[#262f3a] hover:bg-[#2e3944] text-slate-200 text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      Editar
+                    </button>
+
+                    <button
+                      onClick={() => setTripToDelete(v)}
+                      title="Eliminar viaje"
+                      className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-semibold rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {tripToDelete && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1b2127] border border-[#2e3944] rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="p-2.5 bg-rose-500/10 rounded-xl border border-rose-500/20">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-100 text-base">¿Eliminar este viaje?</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Ruta: <b className="text-slate-200">{tripToDelete.origen} → {tripToDelete.destino}</b>
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-400 bg-[#14181c] p-3 rounded-xl border border-[#2e3944]">
+              Esta acción borrará el registro del viaje de los contadores y reportes.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setTripToDelete(null)}
+                className="px-4 py-2 bg-[#262f3a] hover:bg-[#2e3944] text-slate-300 font-semibold rounded-xl text-xs cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-lg shadow-rose-600/30"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Sí, Eliminar Viaje
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
