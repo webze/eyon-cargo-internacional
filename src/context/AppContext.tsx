@@ -927,6 +927,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
+      let cleanUrl = sheetsUrl.trim();
+      if (cleanUrl.endsWith('/edit')) {
+        cleanUrl = cleanUrl.replace(/\/edit$/, '/exec');
+      } else if (cleanUrl.endsWith('/dev')) {
+        cleanUrl = cleanUrl.replace(/\/dev$/, '/exec');
+      }
+
+      if (!cleanUrl.includes('script.google.com')) {
+        if (!silent) showToastMessage('La URL debe comenzar con https://script.google.com/...');
+        return;
+      }
+
       const payload = {
         action: 'replaceAll',
         clientes,
@@ -937,19 +949,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         pagos,
         socios,
       };
-      const res = await fetch(sheetsUrl, {
+
+      const res = await fetch(cleanUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
       });
+
       const json = await res.json();
-      if (json.ok) {
-        if (!silent) showToastMessage('Todos los datos fueron respaldados en Google Sheets');
+      if (json && json.ok) {
+        if (!silent) showToastMessage('¡Éxito! Todos los datos fueron guardados en Google Sheets');
+      } else if (json && json.error) {
+        if (!silent) showToastMessage(`Apps Script Error: ${json.error}`);
       } else {
-        if (!silent) showToastMessage('Error en el script de Sheets');
+        if (!silent) showToastMessage('Error en el script. Crea una NUEVA VERSIÓN en Apps Script');
       }
-    } catch {
-      if (!silent) showToastMessage('No se pudo conectar con la URL de Google Sheets');
+    } catch (err) {
+      console.error('Error pushToSheets:', err);
+      if (!silent) {
+        showToastMessage('Error de conexión con Sheets. Asegúrate de publicar como "Cualquiera" (Anyone)');
+      }
     }
   };
 
@@ -959,9 +978,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const res = await fetch(`${sheetsUrl}?action=getAll`);
+      let cleanUrl = sheetsUrl.trim();
+      if (cleanUrl.endsWith('/edit')) cleanUrl = cleanUrl.replace(/\/edit$/, '/exec');
+      if (cleanUrl.endsWith('/dev')) cleanUrl = cleanUrl.replace(/\/dev$/, '/exec');
+
+      const res = await fetch(`${cleanUrl}?action=getAll`);
       const json = await res.json();
-      if (json.ok) {
+      if (json && json.ok) {
         if (json.clientes) setClientes(json.clientes);
         if (json.viajes) setViajes(json.viajes);
         if (json.vehiculos) setVehiculos(json.vehiculos);
@@ -979,9 +1002,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           socios: json.socios,
         });
         showToastMessage('Datos actualizados exitosamente desde Google Sheets');
+      } else {
+        showToastMessage('No se pudo traer datos. Verifica el permiso "Cualquiera" en Google Apps Script');
       }
     } catch {
-      showToastMessage('Error al sincronizar desde Google Sheets');
+      showToastMessage('Error de red al conectar con Google Sheets');
     }
   };
 

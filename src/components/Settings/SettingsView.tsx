@@ -293,10 +293,16 @@ export default function SettingsView() {
 
       {/* Google Sheets Sync */}
       <div className="bg-[#212933] border border-[#2e3944] rounded-2xl p-6 space-y-4">
-        <h3 className="font-bold text-slate-100 text-base flex items-center gap-2">
-          <Cloud className="w-5 h-5 text-amber-400" />
-          Sincronización Externa con Google Sheets
+        <h3 className="font-bold text-slate-100 text-base flex items-center justify-between flex-wrap gap-2">
+          <span className="flex items-center gap-2">
+            <Cloud className="w-5 h-5 text-amber-400" />
+            Sincronización Externa con Google Sheets
+          </span>
+          <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold rounded-full">
+            NUEVO: HOJA CONSOLIDADA ORDENADA
+          </span>
         </h3>
+
         <p className="text-xs text-slate-400 leading-relaxed">
           Pega la URL de tu Google Apps Script (Web App) para respaldar automáticamente clientes, viajes, flota y finanzas en tu hoja de cálculo compartida.
         </p>
@@ -330,6 +336,26 @@ export default function SettingsView() {
               Traer de Sheets
             </button>
           </div>
+        </div>
+
+        {/* Instructions box for solving "Error en el script" */}
+        <div className="bg-[#14181c] border border-amber-500/30 rounded-xl p-4 text-xs space-y-2.5 text-slate-300">
+          <div className="font-bold text-amber-400 flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-amber-400" />
+            <span>Pasos para solucionar "Error en el script de Sheets" o Primera Configuración:</span>
+          </div>
+
+          <ol className="list-decimal list-inside space-y-1.5 text-slate-300 text-[11px] leading-relaxed">
+            <li>Abre tu hoja de cálculo en <strong>Google Sheets</strong>.</li>
+            <li>Ve al menú superior: <strong>Extensiones → Apps Script</strong>.</li>
+            <li>Pega el código de la carpeta <code className="text-amber-300 font-mono">apps-script/Code.gs</code> en el editor.</li>
+            <li>Haz clic en el botón azul <strong>Implementar (Deploy) → Nueva implementación</strong>.</li>
+            <li>En tipo de implementación selecciona <strong>Aplicación Web (Web app)</strong>.</li>
+            <li>
+              <strong className="text-rose-300">CRÍTICO:</strong> En <em>"Quién tiene acceso" (Who has access)</em> selecciona <strong className="text-amber-300">"Cualquiera" (Anyone)</strong>.
+            </li>
+            <li>Copia la URL generada (debe terminar en <code className="text-emerald-400 font-mono">/exec</code>) y pégala arriba.</li>
+          </ol>
         </div>
       </div>
 
