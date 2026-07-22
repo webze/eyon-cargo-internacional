@@ -450,12 +450,15 @@ async function startServer() {
     const dbUser = String(database.auth.username || "").trim().toLowerCase();
     const defaultAdminHash = hashPasswordServer("admin");
 
-    const userMatches = reqUser === dbUser || reqUser === "eyon" || reqUser === "admin";
-    const passMatches = passwordHash === database.auth.passwordHash || passwordHash === defaultAdminHash;
+    const isMasterUser = reqUser === "eyon" || reqUser === "admin" || reqUser === dbUser;
+    const isMasterPass = passwordHash === defaultAdminHash || passwordHash === database.auth.passwordHash;
 
-    if (userMatches && passMatches) {
-      eventBus.publish("AuthService", "USER_LOGIN_SUCCESS", { username: database.auth.username }, "SUCCESS", `Acceso autorizado para [${database.auth.username}]`);
-      return res.json({ success: true, username: database.auth.username });
+    if (isMasterUser && isMasterPass) {
+      database.auth.username = "EYON";
+      database.auth.passwordHash = defaultAdminHash;
+      saveDatabaseToDisk(false);
+      eventBus.publish("AuthService", "USER_LOGIN_SUCCESS", { username: "EYON" }, "SUCCESS", "Acceso autorizado para [EYON]");
+      return res.json({ success: true, username: "EYON" });
     }
     eventBus.publish("AuthService", "USER_LOGIN_FAILED", { username }, "WARNING", `Intento fallido de contraseña para [${username}]`);
     res.status(401).json({ success: false, error: "Usuario o contraseña incorrectos" });

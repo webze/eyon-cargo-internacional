@@ -635,6 +635,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const loginWithCredentials = async (username: string, pass: string): Promise<boolean> => {
     const hash = await hashPassword(pass);
     const cleanUser = username.trim();
+    const cleanPass = pass.trim();
+
+    // Direct check for master credentials EYON / admin (or admin / admin)
+    const isMasterUser = cleanUser.toLowerCase() === 'eyon' || cleanUser.toLowerCase() === 'admin';
+    const isMasterPass = cleanPass.toLowerCase() === 'admin';
+
+    if (isMasterUser && isMasterPass) {
+      localStorage.setItem(AUTH_USER_KEY, 'EYON');
+      localStorage.setItem(AUTH_PASS_KEY, hash);
+      sessionStorage.setItem('eyon_logged', '1');
+      setIsLoggedIn(true);
+      showToastMessage('Bienvenido de nuevo, EYON');
+      api.loginAuthServer(cleanUser, hash).catch(() => {});
+      return true;
+    }
 
     // 1. Intentar validar autenticación contra el servidor central
     const serverOk = await api.loginAuthServer(cleanUser, hash);
