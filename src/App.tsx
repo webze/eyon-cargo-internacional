@@ -70,6 +70,7 @@ function MainAppShell() {
             setTripModalId(null);
           }}
           onOpenWidgetModal={() => setShowWidgetCustomizer(true)}
+          onOpenVehDetail={(id) => setVehDetailId(id)}
         />
 
         {/* View Router */}

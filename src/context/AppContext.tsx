@@ -13,6 +13,9 @@ import {
   DashboardWidgetConfig,
   AppThemeConfig,
   DailyBackup,
+  Ranfla,
+  MaintenanceTask,
+  VehicleExpense,
 } from '../types';
 import {
   INITIAL_CLIENTS,
@@ -25,6 +28,12 @@ import {
 } from '../data/initialData';
 import * as api from '../services/api';
 import { hashPassword } from '../utils/crypto';
+import { initAuthListener, googleSignIn, googleLogout } from '../services/googleAuth';
+import { findOrCreateSpreadsheet, syncAllDataToGoogleSheets, downloadOfflineExcelBackup } from '../services/googleSheetsService';
+import { User } from 'firebase/auth';
+
+const GOOGLE_SPREADSHEET_ID_KEY = 'eyon_google_spreadsheet_id';
+const GOOGLE_AUTOSYNC_KEY = 'eyon_google_autosync_enabled';
 
 const STORAGE_KEY = 'eyon_cargo_data_v3';
 const PIN_KEY = 'eyon_cargo_pin';
@@ -38,17 +47,18 @@ const DAILY_BACKUPS_KEY = 'eyon_daily_backups';
 const DEFAULT_WIDGETS: DashboardWidgetConfig[] = [
   { id: 'stats_overview', title: 'Resumen Estadístico Operativo', visible: true, order: 1 },
   { id: 'financial_summary', title: 'Balance de Liquidez Disponible', visible: true, order: 2 },
-  { id: 'compliance_alerts', title: 'Alertas de Vencimiento de Papeles (SUTRAN / MTC / SUNAT)', visible: true, order: 3 },
-  { id: 'upcoming_trips', title: 'Próximos Viajes y Fletes Asignados', visible: true, order: 4 },
-  { id: 'event_stream', title: 'Consola de Microservicios y Eventos en Tiempo Real', visible: true, order: 5 },
-  { id: 'debt_alerts', title: 'Calendario de Vencimiento de Deudas', visible: true, order: 6 },
+  { id: 'charts_pie_overview', title: 'Análisis Gráficos Circulares de Operación y Fletes', visible: true, order: 3 },
+  { id: 'compliance_alerts', title: 'Alertas de Vencimiento de Papeles (SUTRAN / MTC / SUNAT)', visible: true, order: 4 },
+  { id: 'upcoming_trips', title: 'Próximos Viajes y Fletes Asignados', visible: true, order: 5 },
+  { id: 'event_stream', title: 'Consola de Microservicios y Eventos en Tiempo Real', visible: true, order: 6 },
+  { id: 'debt_alerts', title: 'Calendario de Vencimiento de Deudas', visible: true, order: 7 },
 ];
 
 const DEFAULT_THEME: AppThemeConfig = {
   mode: 'dark',
   accentColor: 'amber',
   compactMode: false,
-  showEventStreamBanner: true,
+  showEventStreamBanner: false,
   autoSyncSheets: false,
   privacyMode: false,
 };
@@ -118,7 +128,7 @@ interface AppContextType {
   editVehicle: (id: string, vehicle: Partial<Vehicle>) => Promise<void>;
   removeVehicle: (id: string) => Promise<void>;
 
-  // Vehicle sub-items
+  // Vehicle sub-items & Km / Ranfla / Mantenimiento / Gastos
   addVehicleDoc: (vehicleId: string, doc: Omit<VehicleDocument, 'id'>) => Promise<void>;
   editVehicleDoc: (vehicleId: string, docId: string, doc: Partial<VehicleDocument>) => Promise<void>;
   removeVehicleDoc: (vehicleId: string, docId: string) => Promise<void>;
@@ -126,6 +136,18 @@ interface AppContextType {
   addFuelLog: (vehicleId: string, fuel: Omit<FuelLog, 'id'>) => Promise<void>;
   editFuelLog: (vehicleId: string, fuelId: string, fuel: Partial<FuelLog>) => Promise<void>;
   removeFuelLog: (vehicleId: string, fuelId: string) => Promise<void>;
+
+  updateVehicleKm: (vehicleId: string, km: number) => Promise<void>;
+  updateRanfla: (vehicleId: string, ranflaData: Ranfla) => Promise<void>;
+  addRanflaDoc: (vehicleId: string, docData: Omit<VehicleDocument, 'id'>) => Promise<void>;
+  removeRanflaDoc: (vehicleId: string, docId: string) => Promise<void>;
+
+  addMaintenanceTask: (vehicleId: string, taskData: Omit<MaintenanceTask, 'id'>) => Promise<void>;
+  updateMaintenanceTask: (vehicleId: string, taskId: string, taskData: Partial<MaintenanceTask>) => Promise<void>;
+  removeMaintenanceTask: (vehicleId: string, taskId: string) => Promise<void>;
+
+  addVehicleExpense: (vehicleId: string, expenseData: Omit<VehicleExpense, 'id'>) => Promise<void>;
+  removeVehicleExpense: (vehicleId: string, expenseId: string) => Promise<void>;
 
   // CRUD Finance
   addAccount: (account: Omit<BankAccount, 'id'>) => Promise<void>;
@@ -147,6 +169,24 @@ interface AppContextType {
   addPartnerPayout: (partnerId: string, payout: { fecha: string; monto: number; concepto: string }) => Promise<void>;
 
   // External Sync & Demo
+  googleUser: User | null;
+  googleToken: string | null;
+  googleSyncStatus: {
+    connected: boolean;
+    spreadsheetId?: string;
+    spreadsheetUrl?: string;
+    lastSyncTime?: number;
+    autoSyncEnabled: boolean;
+    syncing: boolean;
+    rowsSynced?: number;
+    error?: string;
+  };
+  connectGoogleSheets: () => Promise<boolean>;
+  disconnectGoogleSheets: () => Promise<void>;
+  triggerGoogleSheetsSync: (silent?: boolean) => Promise<boolean>;
+  toggleGoogleAutoSync: (enabled: boolean) => void;
+  downloadExcelBackup: () => void;
+
   setSheetsUrl: (url: string) => void;
   pushToSheets: (silent?: boolean) => Promise<void>;
   pullFromSheets: () => Promise<void>;
@@ -186,6 +226,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Daily Backups State
   const [dailyBackups, setDailyBackups] = useState<DailyBackup[]>([]);
+
+  // Google OAuth & Realtime Sheets Sync State
+  const [googleUser, setGoogleUser] = useState<User | null>(null);
+  const [googleToken, setGoogleToken] = useState<string | null>(null);
+  const [googleSyncStatus, setGoogleSyncStatus] = useState<{
+    connected: boolean;
+    spreadsheetId?: string;
+    spreadsheetUrl?: string;
+    lastSyncTime?: number;
+    autoSyncEnabled: boolean;
+    syncing: boolean;
+    rowsSynced?: number;
+    error?: string;
+  }>(() => {
+    const savedSheetId = localStorage.getItem(GOOGLE_SPREADSHEET_ID_KEY) || undefined;
+    const autoSyncVal = localStorage.getItem(GOOGLE_AUTOSYNC_KEY);
+    return {
+      connected: false,
+      spreadsheetId: savedSheetId,
+      spreadsheetUrl: savedSheetId ? `https://docs.google.com/spreadsheets/d/${savedSheetId}` : undefined,
+      autoSyncEnabled: autoSyncVal === null ? true : autoSyncVal === 'true',
+      syncing: false,
+    };
+  });
 
   const toggleSidebar = () => {
     setSidebarCollapsed((prev) => {
@@ -322,6 +386,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let loadedSocios: Partner[] = [];
 
     try {
+      // Sync auth status with backend server so all devices share the same single user setup
+      const authStatus = await api.fetchAuthStatus();
+      if (authStatus && authStatus.configured) {
+        setHasConfiguredUser(true);
+        setConfiguredUsername(authStatus.username);
+        localStorage.setItem(AUTH_USER_KEY, authStatus.username);
+      } else {
+        const savedUser = localStorage.getItem(AUTH_USER_KEY);
+        const savedPassHash = localStorage.getItem(AUTH_PASS_KEY);
+        if (savedUser && savedPassHash) {
+          setHasConfiguredUser(true);
+          setConfiguredUsername(savedUser);
+          api.setupAuthServer(savedUser, savedPassHash).catch(() => {});
+        }
+      }
+
       // First try full server state
       const serverState = await api.fetchFullSyncState();
       if (serverState) {
@@ -432,7 +512,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // Auth & User Credentials Management
+  // Auth & User Credentials Management (Single Account Server Sync)
   const setupInitialUser = async (username: string, pass: string) => {
     const hash = await hashPassword(pass);
     const cleanUser = username.trim();
@@ -440,42 +520,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(AUTH_PASS_KEY, hash);
     setHasConfiguredUser(true);
     setConfiguredUsername(cleanUser);
+
+    // Guardar credenciales en el servidor para que cualquier otro dispositivo se conecte a esta cuenta
+    await api.setupAuthServer(cleanUser, hash);
+
     sessionStorage.setItem('eyon_logged', '1');
     setIsLoggedIn(true);
-    showToastMessage(`Usuario "${cleanUser}" creado exitosamente con clave encriptada.`);
+    showToastMessage(`Usuario "${cleanUser}" registrado exitosamente en el servidor con clave encriptada.`);
   };
 
   const loginWithCredentials = async (username: string, pass: string): Promise<boolean> => {
-    const savedUser = localStorage.getItem(AUTH_USER_KEY);
-    const savedPassHash = localStorage.getItem(AUTH_PASS_KEY);
+    const hash = await hashPassword(pass);
+    const cleanUser = username.trim();
 
-    if (!savedUser || !savedPassHash) {
-      await setupInitialUser(username, pass);
+    // 1. Intentar validar autenticación contra el servidor central
+    const serverOk = await api.loginAuthServer(cleanUser, hash);
+    if (serverOk) {
+      localStorage.setItem(AUTH_USER_KEY, cleanUser);
+      localStorage.setItem(AUTH_PASS_KEY, hash);
+      sessionStorage.setItem('eyon_logged', '1');
+      setIsLoggedIn(true);
+      showToastMessage(`Bienvenido de nuevo, ${cleanUser}`);
       return true;
     }
 
-    const hash = await hashPassword(pass);
-    if (username.trim().toLowerCase() === savedUser.trim().toLowerCase() && hash === savedPassHash) {
+    // 2. Comprobación de respaldo local en navegador
+    const savedUser = localStorage.getItem(AUTH_USER_KEY);
+    const savedPassHash = localStorage.getItem(AUTH_PASS_KEY);
+
+    if (savedUser && savedPassHash && cleanUser.toLowerCase() === savedUser.trim().toLowerCase() && hash === savedPassHash) {
       sessionStorage.setItem('eyon_logged', '1');
       setIsLoggedIn(true);
       showToastMessage(`Bienvenido de nuevo, ${savedUser}`);
       return true;
     }
+
     return false;
   };
 
   const updatePassword = async (currentPass: string, newPass: string): Promise<boolean> => {
-    const savedPassHash = localStorage.getItem(AUTH_PASS_KEY);
     const currentHash = await hashPassword(currentPass);
+    const newHash = await hashPassword(newPass);
 
-    if (savedPassHash && currentHash !== savedPassHash) {
-      showToastMessage('La contraseña actual ingresada es incorrecta');
-      return false;
+    const serverOk = await api.updatePasswordServer(currentHash, newHash);
+    if (!serverOk) {
+      const savedPassHash = localStorage.getItem(AUTH_PASS_KEY);
+      if (savedPassHash && currentHash !== savedPassHash) {
+        showToastMessage('La contraseña actual ingresada es incorrecta');
+        return false;
+      }
     }
 
-    const newHash = await hashPassword(newPass);
     localStorage.setItem(AUTH_PASS_KEY, newHash);
-    showToastMessage('Contraseña encriptada actualizada correctamente');
+    showToastMessage('Contraseña encriptada actualizada correctamente en el servidor');
     return true;
   };
 
@@ -797,6 +894,125 @@ export function AppProvider({ children }: { children: ReactNode }) {
     showToastMessage('Registro de combustible eliminado');
   };
 
+  // Actualización de Kilometraje (Odómetro)
+  const updateVehicleKm = async (vehicleId: string, km: number) => {
+    const updatedVehicles = vehiculos.map((v) => (v.id === vehicleId ? { ...v, kmActual: km } : v));
+    setVehiculos(updatedVehicles);
+    saveState({ vehiculos: updatedVehicles });
+    showToastMessage(`Odómetro actualizado a ${km.toLocaleString('es-PE')} km`);
+  };
+
+  // Gestión de Ranfla / Carretea
+  const updateRanfla = async (vehicleId: string, ranflaData: Ranfla) => {
+    const updatedVehicles = vehiculos.map((v) => (v.id === vehicleId ? { ...v, ranfla: ranflaData } : v));
+    setVehiculos(updatedVehicles);
+    saveState({ vehiculos: updatedVehicles });
+    showToastMessage('Datos de la Ranfla / Carretea guardados con éxito');
+  };
+
+  const addRanflaDoc = async (vehicleId: string, docData: Omit<VehicleDocument, 'id'>) => {
+    const newDoc: VehicleDocument = { id: 'doc_r' + Date.now().toString(36), ...docData };
+    const updatedVehicles = vehiculos.map((v) => {
+      if (v.id !== vehicleId) return v;
+      const ranfla = v.ranfla || { placa: 'SIN-PLACA', tipo: 'Plataforma 3 Ejes', documentos: [] };
+      return {
+        ...v,
+        ranfla: {
+          ...ranfla,
+          documentos: [...(ranfla.documentos || []), newDoc],
+        },
+      };
+    });
+    setVehiculos(updatedVehicles);
+    saveState({ vehiculos: updatedVehicles });
+    showToastMessage('Documento de Ranfla registrado');
+  };
+
+  const removeRanflaDoc = async (vehicleId: string, docId: string) => {
+    const updatedVehicles = vehiculos.map((v) => {
+      if (v.id !== vehicleId || !v.ranfla) return v;
+      return {
+        ...v,
+        ranfla: {
+          ...v.ranfla,
+          documentos: (v.ranfla.documentos || []).filter((d) => d.id !== docId),
+        },
+      };
+    });
+    setVehiculos(updatedVehicles);
+    saveState({ vehiculos: updatedVehicles });
+    showToastMessage('Documento de Ranfla eliminado');
+  };
+
+  // Mantenimiento Preventivo por Kilometraje
+  const addMaintenanceTask = async (vehicleId: string, taskData: Omit<MaintenanceTask, 'id'>) => {
+    const newTask: MaintenanceTask = { id: 'maint_' + Date.now().toString(36), ...taskData };
+    const updatedVehicles = vehiculos.map((v) => {
+      if (v.id !== vehicleId) return v;
+      return { ...v, mantenimientos: [...(v.mantenimientos || []), newTask] };
+    });
+    setVehiculos(updatedVehicles);
+    saveState({ vehiculos: updatedVehicles });
+    showToastMessage('Tarea de mantenimiento preventivo agregada');
+  };
+
+  const updateMaintenanceTask = async (vehicleId: string, taskId: string, taskData: Partial<MaintenanceTask>) => {
+    const updatedVehicles = vehiculos.map((v) => {
+      if (v.id !== vehicleId) return v;
+      const tasks = (v.mantenimientos || []).map((t) => (t.id === taskId ? { ...t, ...taskData } : t));
+      return { ...v, mantenimientos: tasks };
+    });
+    setVehiculos(updatedVehicles);
+    saveState({ vehiculos: updatedVehicles });
+    showToastMessage('Mantenimiento actualizado (Km registrado)');
+  };
+
+  const removeMaintenanceTask = async (vehicleId: string, taskId: string) => {
+    const updatedVehicles = vehiculos.map((v) => {
+      if (v.id !== vehicleId) return v;
+      return { ...v, mantenimientos: (v.mantenimientos || []).filter((t) => t.id !== taskId) };
+    });
+    setVehiculos(updatedVehicles);
+    saveState({ vehiculos: updatedVehicles });
+    showToastMessage('Tarea de mantenimiento eliminada');
+  };
+
+  // Gastos / Repuestos / Llantas de Vehículo
+  const addVehicleExpense = async (vehicleId: string, expenseData: Omit<VehicleExpense, 'id'>) => {
+    const newExpense: VehicleExpense = { id: 'exp_' + Date.now().toString(36), ...expenseData };
+    const updatedVehicles = vehiculos.map((v) => {
+      if (v.id !== vehicleId) return v;
+      return { ...v, gastos: [newExpense, ...(v.gastos || [])] };
+    });
+    setVehiculos(updatedVehicles);
+
+    // Opcionalmente registrar como egreso en pagos para balance de liquidez
+    const newPayment: Payment = {
+      id: 'pag_' + Date.now().toString(36),
+      tipo: 'Egreso',
+      estado: 'Pagado',
+      categoria: `Mantenimiento - ${expenseData.categoria}`,
+      monto: expenseData.monto,
+      fecha: expenseData.fecha,
+      descripcion: `Gasto de Vehículo: ${expenseData.descripcion} (${expenseData.km} km)`,
+    };
+    const updatedPagos = [newPayment, ...pagos];
+    setPagos(updatedPagos);
+
+    saveState({ vehiculos: updatedVehicles, pagos: updatedPagos });
+    showToastMessage('Gasto de vehículo registrado y descontado en finanzas');
+  };
+
+  const removeVehicleExpense = async (vehicleId: string, expenseId: string) => {
+    const updatedVehicles = vehiculos.map((v) => {
+      if (v.id !== vehicleId) return v;
+      return { ...v, gastos: (v.gastos || []).filter((g) => g.id !== expenseId) };
+    });
+    setVehiculos(updatedVehicles);
+    saveState({ vehiculos: updatedVehicles });
+    showToastMessage('Gasto de vehículo eliminado');
+  };
+
   // CRUD Finance
   const addAccount = async (accData: Omit<BankAccount, 'id'>) => {
     const newAcc: BankAccount = { id: 'cta_' + Date.now().toString(36), ...accData };
@@ -1064,6 +1280,127 @@ export function AppProvider({ children }: { children: ReactNode }) {
     showToastMessage('Datos de muestra completados (Tráilers, BCP, Deudas) cargados con éxito');
   };
 
+  // Google Auth Listener
+  useEffect(() => {
+    const unsubscribe = initAuthListener(
+      (user, token) => {
+        setGoogleUser(user);
+        setGoogleToken(token);
+        setGoogleSyncStatus((prev) => ({ ...prev, connected: true }));
+      },
+      () => {
+        setGoogleUser(null);
+        setGoogleToken(null);
+        setGoogleSyncStatus((prev) => ({ ...prev, connected: false }));
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
+  const connectGoogleSheets = async (): Promise<boolean> => {
+    try {
+      setGoogleSyncStatus((prev) => ({ ...prev, syncing: true, error: undefined }));
+      const res = await googleSignIn();
+      if (!res) throw new Error('No se completó la autenticación con Google');
+
+      setGoogleUser(res.user);
+      setGoogleToken(res.accessToken);
+
+      // Find or create Google Spreadsheet
+      const sheetId = await findOrCreateSpreadsheet(res.accessToken, googleSyncStatus.spreadsheetId);
+      localStorage.setItem(GOOGLE_SPREADSHEET_ID_KEY, sheetId);
+
+      // Initial Sync
+      const payload = { clientes, viajes, vehiculos, cuentas, deudas, socios, username: configuredUsername };
+      const syncRes = await syncAllDataToGoogleSheets(res.accessToken, sheetId, payload);
+
+      if (syncRes.success) {
+        setGoogleSyncStatus({
+          connected: true,
+          spreadsheetId: sheetId,
+          spreadsheetUrl: syncRes.spreadsheetUrl,
+          lastSyncTime: syncRes.timestamp,
+          autoSyncEnabled: true,
+          syncing: false,
+          rowsSynced: syncRes.rowsSynced,
+        });
+        showToastMessage('🟢 Google Sheets vinculado y datos sincronizados con éxito');
+        return true;
+      } else {
+        throw new Error(syncRes.error || 'Error en sincronización inicial');
+      }
+    } catch (err: any) {
+      console.error('Error al conectar Google Sheets:', err);
+      setGoogleSyncStatus((prev) => ({
+        ...prev,
+        syncing: false,
+        error: err?.message || 'Falló la vinculación con Google Sheets',
+      }));
+      showToastMessage(`Error vinculando Google Sheets: ${err?.message || 'Error de conexión'}`);
+      return false;
+    }
+  };
+
+  const disconnectGoogleSheets = async () => {
+    await googleLogout();
+    setGoogleUser(null);
+    setGoogleToken(null);
+    setGoogleSyncStatus((prev) => ({ ...prev, connected: false, syncing: false }));
+    showToastMessage('Google Sheets desconectado');
+  };
+
+  const triggerGoogleSheetsSync = async (silent: boolean = false): Promise<boolean> => {
+    if (!googleToken || !googleSyncStatus.spreadsheetId) {
+      if (!silent) showToastMessage('Primero debes vincular tu cuenta de Google Sheets');
+      return false;
+    }
+    try {
+      if (!silent) setGoogleSyncStatus((prev) => ({ ...prev, syncing: true }));
+      const payload = { clientes, viajes, vehiculos, cuentas, deudas, socios, username: configuredUsername };
+      const syncRes = await syncAllDataToGoogleSheets(googleToken, googleSyncStatus.spreadsheetId, payload);
+
+      if (syncRes.success) {
+        setGoogleSyncStatus((prev) => ({
+          ...prev,
+          lastSyncTime: syncRes.timestamp,
+          syncing: false,
+          rowsSynced: syncRes.rowsSynced,
+          error: undefined,
+        }));
+        if (!silent) showToastMessage('🟢 Sincronizado en tiempo real con Google Sheets');
+        return true;
+      } else {
+        setGoogleSyncStatus((prev) => ({ ...prev, syncing: false, error: syncRes.error }));
+        if (!silent) showToastMessage(`Error al sincronizar: ${syncRes.error}`);
+        return false;
+      }
+    } catch (err: any) {
+      setGoogleSyncStatus((prev) => ({ ...prev, syncing: false, error: err?.message }));
+      return false;
+    }
+  };
+
+  const toggleGoogleAutoSync = (enabled: boolean) => {
+    localStorage.setItem(GOOGLE_AUTOSYNC_KEY, enabled ? 'true' : 'false');
+    setGoogleSyncStatus((prev) => ({ ...prev, autoSyncEnabled: enabled }));
+    showToastMessage(enabled ? 'Sincronización en tiempo real ACTIVADA' : 'Sincronización automática PAUSADA');
+  };
+
+  const downloadExcelBackup = () => {
+    downloadOfflineExcelBackup({ clientes, viajes, vehiculos, cuentas, deudas, socios });
+    showToastMessage('🟢 Archivo Excel (CSV) de respaldo descargado');
+  };
+
+  // Debounced auto-sync trigger on data change
+  useEffect(() => {
+    if (googleSyncStatus.connected && googleSyncStatus.autoSyncEnabled && googleToken && googleSyncStatus.spreadsheetId) {
+      const timer = setTimeout(() => {
+        triggerGoogleSheetsSync(true);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [clientes, viajes, vehiculos, cuentas, deudas, socios, googleSyncStatus.connected, googleSyncStatus.autoSyncEnabled, googleToken]);
+
   return (
     <AppContext.Provider
       value={{
@@ -1093,6 +1430,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         restoreDailyBackup,
         downloadDailyBackup,
         createManualBackup,
+        googleUser,
+        googleToken,
+        googleSyncStatus,
+        connectGoogleSheets,
+        disconnectGoogleSheets,
+        triggerGoogleSheetsSync,
+        toggleGoogleAutoSync,
+        downloadExcelBackup,
         login,
         setupInitialPin,
         setupInitialUser,
@@ -1121,6 +1466,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addFuelLog,
         editFuelLog,
         removeFuelLog,
+        updateVehicleKm,
+        updateRanfla,
+        addRanflaDoc,
+        removeRanflaDoc,
+        addMaintenanceTask,
+        updateMaintenanceTask,
+        removeMaintenanceTask,
+        addVehicleExpense,
+        removeVehicleExpense,
         addAccount,
         editAccount,
         removeAccount,

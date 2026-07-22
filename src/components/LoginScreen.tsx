@@ -105,7 +105,7 @@ export default function LoginScreen() {
             </div>
             <h1 className="text-xl font-bold text-slate-100 mb-2">Crear Usuario y Clave Encriptada</h1>
             <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-              Esta pantalla de registro se muestra <strong className="text-slate-200">una sola vez</strong> al iniciar por primera vez. Tu contraseña se guardará encriptada con tecnología SHA-256 en tu navegador.
+              Esta pantalla de registro se configura <strong className="text-slate-200">una sola vez para todo el sistema</strong>. La cuenta y contraseña creadas quedaran guardadas centralmente en el servidor para que puedas ingresar desde cualquier otro equipo con estas mismas credenciales.
             </p>
           </>
         ) : (

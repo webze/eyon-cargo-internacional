@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, AlertCircle } from 'lucide-react';
 
 interface VehicleModalProps {
   vehicleId: string | null;
@@ -14,7 +14,10 @@ export default function VehicleModal({ vehicleId, onClose }: VehicleModalProps) 
   const [tipo, setTipo] = useState<'Tráiler' | 'Camión' | 'Furgón' | 'Camioneta' | 'Otro'>('Tráiler');
   const [marca, setMarca] = useState('');
   const [modelo, setModelo] = useState('');
+  const [kmActual, setKmActual] = useState<number | ''>(185200);
   const [notas, setNotas] = useState('');
+
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (vehicleId) {
@@ -24,6 +27,7 @@ export default function VehicleModal({ vehicleId, onClose }: VehicleModalProps) 
         setTipo(v.tipo);
         setMarca(v.marca || '');
         setModelo(v.modelo || '');
+        setKmActual(v.kmActual || 185200);
         setNotas(v.notas || '');
       }
     }
@@ -38,6 +42,7 @@ export default function VehicleModal({ vehicleId, onClose }: VehicleModalProps) 
       tipo,
       marca,
       modelo,
+      kmActual: Number(kmActual) || 0,
       notas,
       estado: 'Operativo' as const,
     };
@@ -52,10 +57,9 @@ export default function VehicleModal({ vehicleId, onClose }: VehicleModalProps) 
 
   const handleDelete = async () => {
     if (!vehicleId) return;
-    if (confirm('¿Eliminar esta unidad y todo su historial de papeles y combustible?')) {
-      await removeVehicle(vehicleId);
-      onClose();
-    }
+    await removeVehicle(vehicleId);
+    setShowConfirmDelete(false);
+    onClose();
   };
 
   return (
@@ -123,6 +127,17 @@ export default function VehicleModal({ vehicleId, onClose }: VehicleModalProps) 
           </div>
 
           <div>
+            <label className="block text-slate-400 uppercase font-semibold mb-1">Odómetro (Km Actual)</label>
+            <input
+              type="number"
+              value={kmActual}
+              onChange={(e) => setKmActual(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="185200"
+              className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-amber-400 font-mono font-bold text-sm focus:outline-none focus:border-amber-500"
+            />
+          </div>
+
+          <div>
             <label className="block text-slate-400 uppercase font-semibold mb-1">Notas / Especificaciones</label>
             <textarea
               rows={2}
@@ -137,10 +152,10 @@ export default function VehicleModal({ vehicleId, onClose }: VehicleModalProps) 
             {vehicleId ? (
               <button
                 type="button"
-                onClick={handleDelete}
-                className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-semibold rounded-xl flex items-center gap-1.5 cursor-pointer"
+                onClick={() => setShowConfirmDelete(true)}
+                className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-semibold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all"
               >
-                <Trash2 className="w-4 h-4" /> Eliminar
+                <Trash2 className="w-4 h-4" /> Eliminar Vehículo
               </button>
             ) : <div />}
 
@@ -161,7 +176,48 @@ export default function VehicleModal({ vehicleId, onClose }: VehicleModalProps) 
             </div>
           </div>
         </form>
+
+        {/* Modal de Confirmación */}
+        {showConfirmDelete && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+            <div className="bg-[#1b2127] border border-rose-500/40 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+
+              <div className="text-center space-y-2">
+                <h3 className="font-bold text-slate-100 text-lg">¿Estás seguro de eliminar este vehículo?</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Vas a quitar el vehículo con placa{' '}
+                  <span className="font-mono font-bold text-amber-400 bg-[#14181c] px-2 py-0.5 rounded border border-[#2e3944]">
+                    {placa || 'UNIDAD'}
+                  </span>{' '}
+                  de tu flota. Esta acción borrará sus papeles oficiales y lecturas de combustible.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmDelete(false)}
+                  className="flex-1 py-2.5 bg-[#262f3a] hover:bg-[#2e3944] text-slate-300 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-600/30 transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Sí, Eliminar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

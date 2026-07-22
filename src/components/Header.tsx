@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   Plus,
@@ -14,16 +14,20 @@ import {
   FileSpreadsheet,
   FileText,
   RefreshCw,
+  Bell,
 } from 'lucide-react';
 import { generateExecutivePDFReport } from '../utils/pdfReport';
+import { generateDailyNotifications, triggerDesktopPushNotifications } from '../utils/dailyNotifications';
+import NotificationsModal from './Modals/NotificationsModal';
 
 interface HeaderProps {
   currentView: string;
   onOpenTripModal: () => void;
   onOpenWidgetModal: () => void;
+  onOpenVehDetail?: (id: string) => void;
 }
 
-export default function Header({ currentView, onOpenTripModal, onOpenWidgetModal }: HeaderProps) {
+export default function Header({ currentView, onOpenTripModal, onOpenWidgetModal, onOpenVehDetail }: HeaderProps) {
   const {
     clientes,
     viajes,
@@ -43,6 +47,24 @@ export default function Header({ currentView, onOpenTripModal, onOpenWidgetModal
   } = useApp();
 
   const [syncingSheets, setSyncingSheets] = useState(false);
+  const [showNotifModal, setShowNotifModal] = useState(false);
+
+  // Calcular notificaciones diarias basadas en la flota
+  const dailyNotifs = generateDailyNotifications(vehiculos);
+  const expiredCount = dailyNotifs.filter((n) => n.urgency === 'expired').length;
+  const totalAlertCount = dailyNotifs.length;
+
+  // Ejecutar notificaciones de escritorio automáticamente 1 vez al día
+  useEffect(() => {
+    if (dailyNotifs.length > 0) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const lastSent = localStorage.getItem('eyon_last_daily_push_date');
+      if (lastSent !== todayStr) {
+        triggerDesktopPushNotifications(dailyNotifs);
+        localStorage.setItem('eyon_last_daily_push_date', todayStr);
+      }
+    }
+  }, [vehiculos]);
 
   const titleMap: Record<string, { title: string; sub: string }> = {
     dashboard: { title: 'Dashboard Principal', sub: 'Módulos personalizables en tiempo real' },
@@ -136,6 +158,24 @@ export default function Header({ currentView, onOpenTripModal, onOpenWidgetModal
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Notification Center Bell Button */}
+          <button
+            onClick={() => setShowNotifModal(true)}
+            title="Ver Notificaciones Diarias de Vencimiento de Flota"
+            className="p-2.5 bg-[#212933] dark:bg-[#212933] light:bg-white hover:bg-[#262f3a] border border-[#2e3944] dark:border-[#2e3944] light:border-slate-200 text-slate-300 rounded-xl relative transition-all cursor-pointer"
+          >
+            <Bell className={`w-4 h-4 ${expiredCount > 0 ? 'text-rose-400 animate-bounce' : 'text-amber-400'}`} />
+            {totalAlertCount > 0 && (
+              <span
+                className={`absolute -top-1.5 -right-1.5 text-[10px] font-black font-mono w-5 h-5 rounded-full flex items-center justify-center text-slate-950 shadow-md ${
+                  expiredCount > 0 ? 'bg-rose-500 text-white animate-pulse' : 'bg-amber-400'
+                }`}
+              >
+                {totalAlertCount}
+              </span>
+            )}
+          </button>
+
           {/* Export Executive PDF Report Button */}
           <button
             onClick={handleExportPDF}
@@ -217,6 +257,14 @@ export default function Header({ currentView, onOpenTripModal, onOpenWidgetModal
           </button>
         </div>
       </div>
+
+      {/* Daily Notifications Modal */}
+      <NotificationsModal
+        isOpen={showNotifModal}
+        onClose={() => setShowNotifModal(false)}
+        notifications={dailyNotifs}
+        onOpenVehDetail={onOpenVehDetail}
+      />
     </header>
   );
 }

@@ -26,16 +26,14 @@ interface ExpirationCountdownBarProps {
 export default function ExpirationCountdownBar({
   dueDate,
   title,
-  totalPeriodDays = 30,
+  totalPeriodDays = 365,
   showClock = true,
 }: ExpirationCountdownBarProps) {
   const [timeLeft, setTimeLeft] = useState<{
     days: number;
-    hours: number;
-    minutes: number;
     isExpired: boolean;
     totalDaysLeft: number;
-  }>({ days: 0, hours: 0, minutes: 0, isExpired: false, totalDaysLeft: 0 });
+  }>({ days: 0, isExpired: false, totalDaysLeft: 0 });
 
   useEffect(() => {
     function calculateTime() {
@@ -48,19 +46,13 @@ export default function ExpirationCountdownBar({
         const absDays = Math.abs(Math.floor(difference / (1000 * 60 * 60 * 24)));
         setTimeLeft({
           days: absDays,
-          hours: 0,
-          minutes: 0,
           isExpired: true,
           totalDaysLeft: -absDays,
         });
       } else {
         const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
         setTimeLeft({
           days,
-          hours,
-          minutes,
           isExpired: false,
           totalDaysLeft: days,
         });
@@ -68,7 +60,6 @@ export default function ExpirationCountdownBar({
     }
 
     calculateTime();
-    // Actualizar cada 60 segundos el reloj
     const timer = setInterval(calculateTime, 60000);
     return () => clearInterval(timer);
   }, [dueDate]);
@@ -83,79 +74,76 @@ export default function ExpirationCountdownBar({
   const rawPercentage = (timeLeft.totalDaysLeft / totalPeriodDays) * 100;
   const progressPercent = Math.max(0, Math.min(100, rawPercentage));
 
-  // Definir colores y estados según urgencia
-  let statusColor = 'emerald';
-  let badgeBg = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400';
+  // LÓGICA DE COLORES SOLICITADA:
+  // - Falta mucho (> 60 días): VERDE
+  // - Falta intermedio (30 - 60 días): AMARILLO
+  // - Falta poco (<= 30 días) o Vencido: ROJO
+  let badgeBg = 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300';
   let barGradient = 'from-emerald-500 to-teal-400';
   let StatusIcon = CheckCircle2;
-  let statusLabel = 'Al día';
+  let statusLabel = `Al día (${timeLeft.days} DÍAS)`;
+  let statusColor = 'emerald';
 
   if (timeLeft.isExpired) {
-    statusColor = 'rose';
     badgeBg = 'bg-rose-500/20 border-rose-500/40 text-rose-300 animate-pulse';
     barGradient = 'from-rose-600 to-rose-400';
     StatusIcon = AlertCircle;
-    statusLabel = `¡Vencido hace ${timeLeft.days} d!`;
-  } else if (timeLeft.totalDaysLeft <= 7) {
+    statusLabel = `¡Vencido hace ${timeLeft.days} Días!`;
     statusColor = 'rose';
-    badgeBg = 'bg-rose-500/20 border-rose-500/30 text-rose-300';
-    barGradient = 'from-rose-500 to-amber-500';
+  } else if (timeLeft.totalDaysLeft <= 30) {
+    badgeBg = 'bg-rose-500/20 border-rose-500/40 text-rose-300';
+    barGradient = 'from-rose-600 to-rose-400';
     StatusIcon = AlertTriangle;
-    statusLabel = `Crítico: ${timeLeft.days}d ${timeLeft.hours}h`;
-  } else if (timeLeft.totalDaysLeft <= 15) {
-    statusColor = 'amber';
-    badgeBg = 'bg-amber-500/20 border-amber-500/30 text-amber-300';
+    statusLabel = `Crítico: ${timeLeft.days} Días faltantes`;
+    statusColor = 'rose';
+  } else if (timeLeft.totalDaysLeft <= 60) {
+    badgeBg = 'bg-amber-500/20 border-amber-500/40 text-amber-300';
     barGradient = 'from-amber-500 to-yellow-400';
     StatusIcon = Timer;
-    statusLabel = `Próximo: ${timeLeft.days}d`;
+    statusLabel = `Atención: ${timeLeft.days} Días faltantes`;
+    statusColor = 'amber';
   }
 
   return (
-    <div className="w-full bg-[#14181c]/80 border border-[#2e3944] rounded-xl p-3 space-y-2">
+    <div className="w-full bg-[#14181c]/80 border border-[#2e3944] rounded-xl p-3.5 space-y-3">
       {/* Cabecera del cronómetro */}
       <div className="flex items-center justify-between text-xs gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <Clock className={`w-3.5 h-3.5 text-${statusColor}-400 flex-shrink-0 ${timeLeft.totalDaysLeft <= 7 ? 'animate-spin-slow' : ''}`} />
-          {title && <span className="font-semibold text-slate-200">{title}</span>}
+          <Clock className={`w-4 h-4 text-${statusColor}-400 flex-shrink-0 ${timeLeft.totalDaysLeft <= 30 ? 'animate-bounce' : ''}`} />
+          {title && <span className="font-bold text-slate-100">{title}</span>}
           <span className="text-[11px] text-slate-400 font-mono">({dueDate})</span>
         </div>
 
-        {/* Badge de tiempo restante */}
-        <div className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1.5 ${badgeBg}`}>
-          <StatusIcon className="w-3.5 h-3.5" />
+        {/* Badge con días restantes */}
+        <div className={`px-3 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 ${badgeBg}`}>
+          <StatusIcon className="w-4 h-4" />
           <span>{statusLabel}</span>
         </div>
       </div>
 
-      {/* Reloj detallado con Días, Horas y Minutos */}
-      {showClock && !timeLeft.isExpired && (
-        <div className="grid grid-cols-3 gap-1 bg-[#101418] p-1.5 rounded-lg border border-[#2e3944]/60 text-center font-mono">
-          <div>
-            <div className="text-xs font-bold text-amber-400">{timeLeft.days}</div>
-            <div className="text-[9px] uppercase text-slate-500">Días</div>
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-200">{timeLeft.hours}</div>
-            <div className="text-[9px] uppercase text-slate-500">Horas</div>
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-400">{timeLeft.minutes}</div>
-            <div className="text-[9px] uppercase text-slate-500">Min</div>
-          </div>
+      {/* Solo Días en texto destacado */}
+      {showClock && (
+        <div className="flex items-center justify-between bg-[#101418] px-3 py-2 rounded-lg border border-[#2e3944]/60 text-xs">
+          <span className="text-slate-400 uppercase font-semibold text-[11px] tracking-wider">Tiempo Restante:</span>
+          <span className={`font-mono font-bold text-sm text-${statusColor}-400`}>
+            {timeLeft.isExpired ? `${timeLeft.days} DÍAS VENCIDO` : `${timeLeft.days} DÍAS DISPONIBLES`}
+          </span>
         </div>
       )}
 
-      {/* Barra de Progreso Visual */}
-      <div className="space-y-1 pt-0.5">
-        <div className="w-full h-2 bg-[#0c0f12] rounded-full overflow-hidden p-0.5 border border-[#2e3944]/50 relative">
+      {/* BARRA DE PROGRESO ANCHA (Línea de tiempo más ancha) */}
+      <div className="space-y-1 pt-1">
+        <div className="w-full h-4 bg-[#0c0f12] rounded-full overflow-hidden p-0.5 border border-[#2e3944] relative shadow-inner">
           <div
-            className={`h-full rounded-full bg-gradient-to-r ${barGradient} transition-all duration-500`}
+            className={`h-full rounded-full bg-gradient-to-r ${barGradient} transition-all duration-500 shadow-sm`}
             style={{ width: `${timeLeft.isExpired ? 100 : progressPercent}%` }}
           />
         </div>
-        <div className="flex justify-between text-[9px] font-mono text-slate-500">
-          <span>0d (Límite)</span>
-          <span>{timeLeft.isExpired ? '100% Expirado' : `${Math.round(progressPercent)}% tiempo disponible`}</span>
+        <div className="flex justify-between text-[10px] font-mono text-slate-400 pt-0.5">
+          <span>0d (Vencimiento)</span>
+          <span className="text-slate-300 font-semibold">
+            {timeLeft.isExpired ? '100% Expirado' : `${Math.round(progressPercent)}% de vigencia`}
+          </span>
           <span>{totalPeriodDays}d Plazo</span>
         </div>
       </div>

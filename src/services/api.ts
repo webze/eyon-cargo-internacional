@@ -204,3 +204,63 @@ export async function fetchFullSyncState(): Promise<AppStateData | null> {
     return null;
   }
 }
+
+export interface AuthStatusResponse {
+  configured: boolean;
+  username: string;
+}
+
+export async function fetchAuthStatus(): Promise<AuthStatusResponse> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/status`);
+    const json = await res.json();
+    if (json.success && json.data) {
+      return json.data;
+    }
+    return { configured: false, username: '' };
+  } catch {
+    return { configured: false, username: '' };
+  }
+}
+
+export async function setupAuthServer(username: string, passwordHash: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/setup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, passwordHash }),
+    });
+    const json = await res.json();
+    return json.success === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function loginAuthServer(username: string, passwordHash: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, passwordHash }),
+    });
+    const json = await res.json();
+    return json.success === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function updatePasswordServer(currentHash: string, newHash: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentHash, newHash }),
+    });
+    const json = await res.json();
+    return json.success === true;
+  } catch {
+    return false;
+  }
+}

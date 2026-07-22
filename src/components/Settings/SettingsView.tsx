@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Settings, Shield, SlidersHorizontal, Cloud, Download, Upload, Key, Check, Github, EyeOff, Lock, CheckCircle2, UserCheck, History, RefreshCw, CalendarCheck, RotateCcw } from 'lucide-react';
+import { Settings, Shield, SlidersHorizontal, Cloud, Download, Upload, Key, Check, Github, EyeOff, Lock, CheckCircle2, UserCheck, History, RefreshCw, CalendarCheck, RotateCcw, ExternalLink } from 'lucide-react';
 
 export default function SettingsView() {
   const {
@@ -21,6 +21,13 @@ export default function SettingsView() {
     downloadDailyBackup,
     createManualBackup,
     restoreDemoData,
+    googleUser,
+    googleSyncStatus,
+    connectGoogleSheets,
+    disconnectGoogleSheets,
+    triggerGoogleSheetsSync,
+    toggleGoogleAutoSync,
+    downloadExcelBackup,
   } = useApp();
 
   const [currentPass, setCurrentPass] = useState('');
@@ -291,71 +298,192 @@ export default function SettingsView() {
         </div>
       </div>
 
-      {/* Google Sheets Sync */}
-      <div className="bg-[#212933] border border-[#2e3944] rounded-2xl p-6 space-y-4">
-        <h3 className="font-bold text-slate-100 text-base flex items-center justify-between flex-wrap gap-2">
-          <span className="flex items-center gap-2">
-            <Cloud className="w-5 h-5 text-amber-400" />
-            Sincronización Externa con Google Sheets
-          </span>
-          <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold rounded-full">
-            NUEVO: HOJA CONSOLIDADA ORDENADA
-          </span>
-        </h3>
+      {/* Realtime Google Sheets & Excel Sync */}
+      <div className="bg-[#212933] border border-amber-500/30 rounded-2xl p-6 space-y-5 shadow-xl relative overflow-hidden">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 className="font-bold text-slate-100 text-base flex items-center gap-2">
+              <Cloud className="w-5 h-5 text-amber-400" />
+              <span>Sincronización en Tiempo Real con Google Sheets / Excel</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              Respalda automáticamente todos tus datos (Clientes, Viajes, Flota, Cuentas, Deudas y Socios) directamente en tu cuenta de Google Drive para mayor seguridad y consulta externa.
+            </p>
+          </div>
 
-        <p className="text-xs text-slate-400 leading-relaxed">
-          Pega la URL de tu Google Apps Script (Web App) para respaldar automáticamente clientes, viajes, flota y finanzas en tu hoja de cálculo compartida.
-        </p>
-
-        <div className="space-y-3 pt-1">
-          <input
-            type="text"
-            value={tempSheetsUrl}
-            onChange={(e) => setTempSheetsUrl(e.target.value)}
-            placeholder="https://script.google.com/macros/s/.../exec"
-            className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 text-xs focus:outline-none focus:border-amber-500 font-mono"
-          />
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={handleSaveSheets}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs cursor-pointer"
-            >
-              Guardar URL
-            </button>
-            <button
-              onClick={() => pushToSheets()}
-              className="px-4 py-2 bg-[#262f3a] hover:bg-[#2e3944] text-slate-200 font-semibold rounded-xl text-xs cursor-pointer"
-            >
-              Subir a Sheets
-            </button>
-            <button
-              onClick={() => pullFromSheets()}
-              className="px-4 py-2 bg-[#262f3a] hover:bg-[#2e3944] text-slate-200 font-semibold rounded-xl text-xs cursor-pointer"
-            >
-              Traer de Sheets
-            </button>
+          <div className="flex items-center gap-2">
+            {googleSyncStatus.connected ? (
+              <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold rounded-full flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                Google Sheets Conectado
+              </span>
+            ) : (
+              <span className="px-3 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/30 text-xs font-bold rounded-full">
+                Sincronización Disponible
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Instructions box for solving "Error en el script" */}
-        <div className="bg-[#14181c] border border-amber-500/30 rounded-xl p-4 text-xs space-y-2.5 text-slate-300">
-          <div className="font-bold text-amber-400 flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-amber-400" />
-            <span>Pasos para solucionar "Error en el script de Sheets" o Primera Configuración:</span>
+        {/* Sync Controls Panel */}
+        <div className="bg-[#14181c] border border-[#2e3944] rounded-xl p-5 space-y-4">
+          {!googleSyncStatus.connected ? (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="text-sm font-bold text-slate-100">
+                  Vincular tu cuenta de Google para Respaldos Automáticos
+                </div>
+                <div className="text-xs text-slate-400">
+                  Se creará una Hoja de Cálculo privada titulada <code className="text-amber-300 font-mono">"EYON CARGO - Respaldos y Datos de Flota"</code> en tu Google Drive.
+                </div>
+              </div>
+
+              <button
+                onClick={connectGoogleSheets}
+                disabled={googleSyncStatus.syncing}
+                className="gsi-material-button text-xs font-bold px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-800 rounded-xl transition-all border border-slate-300 flex items-center gap-3 shadow-md flex-shrink-0 cursor-pointer disabled:opacity-50"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 48 48">
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                </svg>
+                <span>{googleSyncStatus.syncing ? 'Vinculando...' : 'Iniciar Sesión con Google'}</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-[#2e3944]">
+                <div>
+                  <div className="text-xs font-bold text-slate-200 flex items-center gap-2">
+                    <span>Cuenta de Google Conectada:</span>
+                    <span className="text-emerald-400 font-mono">{googleUser?.email || 'Google User'}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-3">
+                    <span>Última sincro: {googleSyncStatus.lastSyncTime ? new Date(googleSyncStatus.lastSyncTime).toLocaleTimeString('es-PE') : 'Reciente'}</span>
+                    <span>•</span>
+                    <span>Filas registradas: {googleSyncStatus.rowsSynced || 0}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {googleSyncStatus.spreadsheetUrl && (
+                    <a
+                      href={googleSyncStatus.spreadsheetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold flex items-center gap-2 transition-all"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Abrir Hoja en Google Sheets</span>
+                    </a>
+                  )}
+
+                  <button
+                    onClick={() => triggerGoogleSheetsSync(false)}
+                    disabled={googleSyncStatus.syncing}
+                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${googleSyncStatus.syncing ? 'animate-spin' : ''}`} />
+                    <span>{googleSyncStatus.syncing ? 'Sincronizando...' : 'Sincronizar Ahora'}</span>
+                  </button>
+
+                  <button
+                    onClick={disconnectGoogleSheets}
+                    className="px-3 py-2 bg-[#262f3a] hover:bg-rose-500/20 text-rose-300 border border-[#2e3944] rounded-xl text-xs font-bold cursor-pointer transition-all"
+                  >
+                    Desconectar
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-slate-100 flex items-center gap-2">
+                    <span>Sincronización Automática en Tiempo Real</span>
+                    {googleSyncStatus.autoSyncEnabled ? (
+                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded">
+                        ACTIVO AL CAMBIAR DATOS
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 bg-slate-500/20 text-slate-400 text-[10px] font-bold rounded">
+                        PAUSADO
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-slate-400">
+                    Al guardar o modificar viajes, fletes o clientes, se enviarán automáticamente a tu Google Sheets.
+                  </div>
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={googleSyncStatus.autoSyncEnabled}
+                    onChange={(e) => toggleGoogleAutoSync(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {googleSyncStatus.error && (
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300 flex items-center gap-2">
+              <span>⚠️ Error: {googleSyncStatus.error}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Offline Excel Download Action */}
+        <div className="pt-2 border-t border-[#2e3944] flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div className="text-xs font-bold text-slate-200">Descarga Directa de Respaldo Excel (.CSV)</div>
+            <div className="text-[11px] text-slate-400">Genera e instala un archivo Excel listo para abrir en Microsoft Excel con todas las pestañas de la app.</div>
           </div>
 
-          <ol className="list-decimal list-inside space-y-1.5 text-slate-300 text-[11px] leading-relaxed">
-            <li>Abre tu hoja de cálculo en <strong>Google Sheets</strong>.</li>
-            <li>Ve al menú superior: <strong>Extensiones → Apps Script</strong>.</li>
-            <li>Pega el código de la carpeta <code className="text-amber-300 font-mono">apps-script/Code.gs</code> en el editor.</li>
-            <li>Haz clic en el botón azul <strong>Implementar (Deploy) → Nueva implementación</strong>.</li>
-            <li>En tipo de implementación selecciona <strong>Aplicación Web (Web app)</strong>.</li>
-            <li>
-              <strong className="text-rose-300">CRÍTICO:</strong> En <em>"Quién tiene acceso" (Who has access)</em> selecciona <strong className="text-amber-300">"Cualquiera" (Anyone)</strong>.
-            </li>
-            <li>Copia la URL generada (debe terminar en <code className="text-emerald-400 font-mono">/exec</code>) y pégala arriba.</li>
-          </ol>
+          <button
+            onClick={downloadExcelBackup}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 cursor-pointer transition-all shadow-md shadow-emerald-600/20"
+          >
+            <Download className="w-4 h-4" />
+            <span>Descargar Copia Excel (.CSV)</span>
+          </button>
+        </div>
+
+        {/* Optional Webhook / Apps Script alternative */}
+        <div className="pt-3 border-t border-[#2e3944]/60 space-y-2">
+          <details className="text-xs text-slate-400 cursor-pointer">
+            <summary className="font-semibold text-slate-300 hover:text-amber-300">
+              Ver opción alternativa (URL de Webhook Google Apps Script)
+            </summary>
+            <div className="space-y-3 pt-3">
+              <input
+                type="text"
+                value={tempSheetsUrl}
+                onChange={(e) => setTempSheetsUrl(e.target.value)}
+                placeholder="https://script.google.com/macros/s/.../exec"
+                className="w-full px-3.5 py-2.5 bg-[#14181c] border border-[#2e3944] rounded-xl text-slate-100 text-xs focus:outline-none focus:border-amber-500 font-mono"
+              />
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={handleSaveSheets}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Guardar URL Webhook
+                </button>
+                <button
+                  onClick={() => pushToSheets()}
+                  className="px-4 py-2 bg-[#262f3a] hover:bg-[#2e3944] text-slate-200 font-semibold rounded-xl text-xs cursor-pointer"
+                >
+                  Subir vía Webhook
+                </button>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
 

@@ -64,7 +64,7 @@ export interface Trip {
 }
 
 /**
- * Tipos de Documentos Oficiales para Flota Pesada
+ * Tipos de Documentos Oficiales para Flota Pesada y Ranfla
  */
 export type DocumentType =
   | 'SOAT'
@@ -75,10 +75,14 @@ export type DocumentType =
   | 'Póliza de Seguro'
   | 'Ficha RUC del vehículo (SUNAT)'
   | 'GPS / Rastreo satelital'
+  | 'CITV Carretea / Ranfla'
+  | 'Tarjeta Propiedad Ranfla'
+  | 'Póliza Seguro Ranfla'
+  | 'Habilitación Ranfla (SUTRAN/MTC)'
   | 'Otro';
 
 /**
- * Interface para Documentos y Vencimientos de Flota
+ * Interface para Documentos y Vencimientos de Flota y Ranfla
  */
 export interface VehicleDocument {
   id: string;
@@ -90,6 +94,45 @@ export interface VehicleDocument {
 }
 
 /**
+ * Interface para Ranfla / Semirremolque / Carretea
+ */
+export interface Ranfla {
+  placa: string;
+  tipo: 'Plataforma 3 Ejes' | 'Furgón 3 Ejes' | 'Cama Baja' | 'Contenedora' | 'Cisterna' | 'Cortinero' | 'Otro';
+  marca?: string;
+  ejes?: number;
+  notas?: string;
+  documentos: VehicleDocument[];
+}
+
+/**
+ * Control Preventivo y Tareas de Mantenimiento por Kilometraje
+ */
+export interface MaintenanceTask {
+  id: string;
+  tipo: 'Cambio de Aceite y Filtros' | 'Engrase General' | 'Rotación / Cambio de Llantas' | 'Frenos y Suspensión' | 'Filtro de Aire y Secador' | 'Mantenimiento Transmisión y Corona' | 'Otro';
+  descripcion: string;
+  kmUltimoCambio: number; // Odómetro cuando se realizó la última vez
+  intervaloKm: number; // Cada cuántos Km le toca (ej. 10,000 km, 15,000 km, 40,000 km)
+  fechaUltimoCambio?: string;
+  costoUltimoCambio?: number;
+}
+
+/**
+ * Registro de Gastos, Compras de Repuestos, Llantas y Accesorios para el Carro/Ranfla
+ */
+export interface VehicleExpense {
+  id: string;
+  fecha: string;
+  categoria: 'Llantas' | 'Aceite y Filtros' | 'Repuestos y Accesorios' | 'Mantenimiento Mecánico' | 'Planchado y Pintura' | 'Peajes y Lavado' | 'Otro';
+  descripcion: string;
+  monto: number;
+  km: number;
+  comprobante?: string;
+  mecanicoOTaller?: string;
+}
+
+/**
  * Registro de Recarga de Combustible
  */
 export interface FuelLog {
@@ -98,7 +141,7 @@ export interface FuelLog {
   galones: number;
   costo: number;
   km: number;
-  nivel: number; // Porcentaje de 0 a 100
+  nivel?: number; // Opcional o histórico
   grifo?: string;
 }
 
@@ -115,6 +158,12 @@ export interface Vehicle {
   documentos: VehicleDocument[];
   combustible: FuelLog[];
   estado?: 'Operativo' | 'Mantenimiento' | 'Inactivo';
+  
+  // Odómetro Actual y Detalle de la Ranfla
+  kmActual?: number;
+  ranfla?: Ranfla;
+  mantenimientos?: MaintenanceTask[];
+  gastos?: VehicleExpense[];
 }
 
 /**

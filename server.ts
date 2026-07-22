@@ -1,7 +1,11 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { EventEmitter } from "events";
 import { createServer as createViteServer } from "vite";
+
+// File Path for Server Database Disk Persistence
+const DB_FILE = path.join(process.cwd(), "server_data_store.json");
 
 // Core Event Bus Architecture
 class EventBus extends EventEmitter {
@@ -50,8 +54,26 @@ class EventBus extends EventEmitter {
 
 const eventBus = new EventBus();
 
-// In-Memory Database Store for Microservices
-const database = {
+// In-Memory & Disk-Persisted Database Store for Microservices
+const database: {
+  auth: {
+    configured: boolean;
+    username: string;
+    passwordHash: string;
+  };
+  clientes: any[];
+  viajes: any[];
+  vehiculos: any[];
+  cuentas: any[];
+  deudas: any[];
+  pagos: any[];
+  socios: any[];
+} = {
+  auth: {
+    configured: false,
+    username: "",
+    passwordHash: "",
+  },
   clientes: [
     {
       id: "cli_1",
@@ -301,41 +323,102 @@ eventBus.on("DOCUMENT_ADDED", (event) => {
   );
 });
 
-// Periodic microservice background compliance checker
-setInterval(() => {
-  let warningsFound = 0;
-  database.vehiculos.forEach((veh) => {
-    (veh.documentos || []).forEach((doc) => {
-      if (!doc.fecha) return;
-      const daysLeft = Math.round((new Date(doc.fecha + "T00:00:00").getTime() - Date.now()) / 86400000);
-      if (daysLeft < 0) {
-        warningsFound++;
-        eventBus.publish(
-          "VehicleMicroservice",
-          "DOCUMENT_EXPIRED_CRITICAL",
-          { vehicle: veh.placa, document: doc.tipo, days: Math.abs(daysLeft) },
-          "ERROR",
-          `ALERTA CRÍTICA: ${doc.tipo} de unidad ${veh.placa} venció hace ${Math.abs(daysLeft)} día(s)`
-        );
-      } else if (daysLeft <= 15) {
-        warningsFound++;
-        eventBus.publish(
-          "VehicleMicroservice",
-          "DOCUMENT_EXPIRING_SOON",
-          { vehicle: veh.placa, document: doc.tipo, daysLeft },
-          "WARNING",
-          `ADVERTENCIA: ${doc.tipo} de unidad ${veh.placa} vence en ${daysLeft} días`
-        );
-      }
-    });
-  });
-}, 45000); // Check compliance every 45s
+// Periodic microservice background compliance checker (desactivado para evitar alertas no solicitadas)
+// setInterval(() => { ... }, 45000);
+
+// Disk Persistence Helpers
+function loadDatabaseFromDisk() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const raw = fs.readFileSync(DB_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (parsed.auth) database.auth = { ...database.auth, ...parsed.auth };
+      if (parsed.clientes) database.clientes = parsed.clientes;
+      if (parsed.viajes) database.viajes = parsed.viajes;
+      if (parsed.vehiculos) database.vehiculos = parsed.vehiculos;
+      if (parsed.cuentas) database.cuentas = parsed.cuentas;
+      if (parsed.deudas) database.deudas = parsed.deudas;
+      if (parsed.pagos) database.pagos = parsed.pagos;
+      if (parsed.socios) database.socios = parsed.socios;
+      console.log("💾 [SERVER] Estado de base de datos y usuario autenticado cargados desde disco.");
+    }
+  } catch (err) {
+    console.error("⚠️ Error cargando base de datos desde disco:", err);
+  }
+}
+
+function saveDatabaseToDisk() {
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(database, null, 2), "utf-8");
+  } catch (err) {
+    console.error("⚠️ Error guardando base de datos en disco:", err);
+  }
+}
+
+// Cargar estado guardado al iniciar
+loadDatabaseFromDisk();
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
+
+  // API Routes - Auth & Single User Credentials Microservice
+  app.get("/api/v1/auth/status", (req, res) => {
+    res.json({
+      success: true,
+      data: {
+        configured: Boolean(database.auth?.configured),
+        username: database.auth?.username || "",
+      },
+    });
+  });
+
+  app.post("/api/v1/auth/setup", (req, res) => {
+    const { username, passwordHash } = req.body || {};
+    if (!username || !passwordHash) {
+      return res.status(400).json({ error: "Nombre de usuario y contraseña encriptada son obligatorios" });
+    }
+    database.auth = {
+      configured: true,
+      username: String(username).trim(),
+      passwordHash: String(passwordHash),
+    };
+    saveDatabaseToDisk();
+    eventBus.publish("AuthService", "USER_REGISTERED_SERVER", { username: database.auth.username }, "SUCCESS", `Usuario principal [${database.auth.username}] registrado en el servidor`);
+    res.json({ success: true, username: database.auth.username });
+  });
+
+  app.post("/api/v1/auth/login", (req, res) => {
+    const { username, passwordHash } = req.body || {};
+    if (!database.auth || !database.auth.configured) {
+      return res.status(400).json({ error: "Aún no hay un usuario registrado en el sistema" });
+    }
+    const reqUser = String(username || "").trim().toLowerCase();
+    const dbUser = String(database.auth.username || "").trim().toLowerCase();
+
+    if (reqUser === dbUser && passwordHash === database.auth.passwordHash) {
+      eventBus.publish("AuthService", "USER_LOGIN_SUCCESS", { username: database.auth.username }, "SUCCESS", `Acceso autorizado para [${database.auth.username}]`);
+      return res.json({ success: true, username: database.auth.username });
+    }
+    eventBus.publish("AuthService", "USER_LOGIN_FAILED", { username }, "WARNING", `Intento fallido de contraseña para [${username}]`);
+    res.status(401).json({ success: false, error: "Usuario o contraseña incorrectos" });
+  });
+
+  app.put("/api/v1/auth/password", (req, res) => {
+    const { currentHash, newHash } = req.body || {};
+    if (!database.auth || !database.auth.configured) {
+      return res.status(400).json({ error: "No hay usuario configurado en el servidor" });
+    }
+    if (currentHash !== database.auth.passwordHash) {
+      return res.status(401).json({ success: false, error: "La contraseña actual ingresada no coincide" });
+    }
+    database.auth.passwordHash = newHash;
+    saveDatabaseToDisk();
+    eventBus.publish("AuthService", "PASSWORD_UPDATED", {}, "SUCCESS", "Contraseña encriptada de servidor actualizada con éxito");
+    res.json({ success: true });
+  });
 
   // API Routes - Clients Microservice
   app.get("/api/v1/clients", (req, res) => {
@@ -455,6 +538,10 @@ async function startServer() {
     res.json({
       success: true,
       data: database,
+      auth: {
+        configured: Boolean(database.auth?.configured),
+        username: database.auth?.username || "",
+      },
     });
   });
 
@@ -468,6 +555,10 @@ async function startServer() {
       if (incoming.deudas) database.deudas = incoming.deudas;
       if (incoming.pagos) database.pagos = incoming.pagos;
       if (incoming.socios) database.socios = incoming.socios;
+      if (req.body.auth && req.body.auth.configured) {
+        database.auth = req.body.auth;
+      }
+      saveDatabaseToDisk();
       eventBus.publish("AuditService", "FULL_SYSTEM_RESTORED", {}, "WARNING", "Base de datos sincronizada/restaurada desde respaldo externo");
       return res.json({ success: true, message: "Sincronización completada" });
     }
