@@ -24,7 +24,7 @@ interface HeaderProps {
   currentView: string;
   onOpenTripModal: () => void;
   onOpenWidgetModal: () => void;
-  onOpenVehDetail?: (id: string) => void;
+  onOpenVehDetail?: (id: string, initialTab?: 'mantenimiento' | 'ranfla' | 'gastos' | 'docs' | 'combustible') => void;
 }
 
 export default function Header({ currentView, onOpenTripModal, onOpenWidgetModal, onOpenVehDetail }: HeaderProps) {

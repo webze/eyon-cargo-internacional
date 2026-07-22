@@ -20,7 +20,7 @@ interface NotificationsModalProps {
   isOpen: boolean;
   onClose: () => void;
   notifications: DailyNotificationItem[];
-  onOpenVehDetail?: (vehicleId: string) => void;
+  onOpenVehDetail?: (vehicleId: string, initialTab?: 'mantenimiento' | 'ranfla' | 'gastos' | 'docs' | 'combustible') => void;
 }
 
 export default function NotificationsModal({
@@ -282,7 +282,7 @@ export default function NotificationsModal({
                         <button
                           onClick={() => {
                             onClose();
-                            onOpenVehDetail(n.vehicleId);
+                            onOpenVehDetail(n.vehicleId, 'docs');
                           }}
                           className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm"
                         >

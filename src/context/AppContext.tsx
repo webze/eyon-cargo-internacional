@@ -608,8 +608,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const fullData = { clientes: c, viajes: v, vehiculos: veh, cuentas: cta, deudas: d, pagos: p, socios: s };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(fullData));
 
-    // Async push to server
-    api.syncFullState(fullData).then(() => {
+    // Send only updated collections to server so we don't overwrite other devices' changes
+    const serverPayload = updated && Object.keys(updated).length > 0 ? updated : fullData;
+
+    api.syncFullState(serverPayload).then(() => {
       setLastSyncTime(new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }));
       api.fetchEvents().then((evs) => setEvents(evs || []));
     });

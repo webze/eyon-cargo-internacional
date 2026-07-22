@@ -35,6 +35,12 @@ function MainAppShell() {
   const [tripPreClient, setTripPreClient] = useState<string | null>(null);
   const [vehicleModalId, setVehicleModalId] = useState<string | null | undefined>(undefined);
   const [vehDetailId, setVehDetailId] = useState<string | null>(null);
+  const [vehDetailTab, setVehDetailTab] = useState<'mantenimiento' | 'ranfla' | 'gastos' | 'docs' | 'combustible' | undefined>(undefined);
+
+  const handleOpenVehDetail = (id: string, initialTab?: 'mantenimiento' | 'ranfla' | 'gastos' | 'docs' | 'combustible') => {
+    setVehDetailId(id);
+    setVehDetailTab(initialTab);
+  };
 
   const [accountModalId, setAccountModalId] = useState<string | null | undefined>(undefined);
   const [debtModalId, setDebtModalId] = useState<string | null | undefined>(undefined);
@@ -70,7 +76,7 @@ function MainAppShell() {
             setTripModalId(null);
           }}
           onOpenWidgetModal={() => setShowWidgetCustomizer(true)}
-          onOpenVehDetail={(id) => setVehDetailId(id)}
+          onOpenVehDetail={handleOpenVehDetail}
         />
 
         {/* View Router */}
@@ -107,7 +113,7 @@ function MainAppShell() {
         {currentView === 'vehiculos' && (
           <VehiclesView
             onOpenVehicleModal={(id) => setVehicleModalId(id ?? null)}
-            onOpenVehDetail={(id) => setVehDetailId(id)}
+            onOpenVehDetail={handleOpenVehDetail}
           />
         )}
 
@@ -147,7 +153,14 @@ function MainAppShell() {
       )}
 
       {vehDetailId !== null && (
-        <VehDetailModal vehicleId={vehDetailId} onClose={() => setVehDetailId(null)} />
+        <VehDetailModal
+          vehicleId={vehDetailId}
+          initialTab={vehDetailTab}
+          onClose={() => {
+            setVehDetailId(null);
+            setVehDetailTab(undefined);
+          }}
+        />
       )}
 
       {accountModalId !== undefined && (

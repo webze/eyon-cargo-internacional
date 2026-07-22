@@ -22,7 +22,7 @@ import ExpirationCountdownBar from '../Common/ExpirationCountdownBar';
  */
 interface VehiclesViewProps {
   onOpenVehicleModal: (id?: string) => void;
-  onOpenVehDetail: (id: string) => void;
+  onOpenVehDetail: (id: string, initialTab?: 'mantenimiento' | 'ranfla' | 'gastos' | 'docs' | 'combustible') => void;
 }
 
 export default function VehiclesView({ onOpenVehicleModal, onOpenVehDetail }: VehiclesViewProps) {
@@ -164,7 +164,7 @@ export default function VehiclesView({ onOpenVehicleModal, onOpenVehDetail }: Ve
               
               {/* 1. ODÓMETRO ACTUAL */}
               <div
-                onClick={() => onOpenVehDetail(mainTrailer.id)}
+                onClick={() => onOpenVehDetail(mainTrailer.id, 'mantenimiento')}
                 className="bg-[#14181c]/90 border border-[#2e3944] hover:border-amber-500/50 rounded-xl p-3.5 cursor-pointer transition-all space-y-1"
               >
                 <div className="text-[11px] text-slate-400 flex items-center justify-between font-medium">
@@ -182,7 +182,7 @@ export default function VehiclesView({ onOpenVehicleModal, onOpenVehDetail }: Ve
 
               {/* 2. RANFLA / CARRETEA */}
               <div
-                onClick={() => onOpenVehDetail(mainTrailer.id)}
+                onClick={() => onOpenVehDetail(mainTrailer.id, 'ranfla')}
                 className="bg-[#14181c]/90 border border-[#2e3944] hover:border-blue-500/50 rounded-xl p-3.5 cursor-pointer transition-all space-y-1"
               >
                 <div className="text-[11px] text-slate-400 flex items-center justify-between font-medium">
@@ -200,7 +200,7 @@ export default function VehiclesView({ onOpenVehicleModal, onOpenVehDetail }: Ve
 
               {/* 3. CAMBIO DE ACEITE Y MANTENIMIENTO */}
               <div
-                onClick={() => onOpenVehDetail(mainTrailer.id)}
+                onClick={() => onOpenVehDetail(mainTrailer.id, 'mantenimiento')}
                 className={`bg-[#14181c]/90 border rounded-xl p-3.5 cursor-pointer transition-all space-y-1 ${
                   isAceiteVencido ? 'border-rose-500/60 bg-rose-500/10' : 'border-[#2e3944] hover:border-amber-500/50'
                 }`}
@@ -226,7 +226,7 @@ export default function VehiclesView({ onOpenVehicleModal, onOpenVehDetail }: Ve
 
               {/* 4. COMPRAS Y REPUESTOS */}
               <div
-                onClick={() => onOpenVehDetail(mainTrailer.id)}
+                onClick={() => onOpenVehDetail(mainTrailer.id, 'gastos')}
                 className="bg-[#14181c]/90 border border-[#2e3944] hover:border-emerald-500/50 rounded-xl p-3.5 cursor-pointer transition-all space-y-1"
               >
                 <div className="text-[11px] text-slate-400 flex items-center justify-between font-medium">
@@ -248,7 +248,10 @@ export default function VehiclesView({ onOpenVehicleModal, onOpenVehDetail }: Ve
 
             {/* CRONÓMETRO DE VENCIMIENTO DE DOCUMENTACIÓN DE CAMIÓN Y RANFLA */}
             {proxDoc && (
-              <div className="pt-3 border-t border-[#2e3944]/80">
+              <div
+                onClick={() => onOpenVehDetail(mainTrailer.id, 'docs')}
+                className="pt-3 border-t border-[#2e3944]/80 cursor-pointer hover:bg-white/5 p-2 rounded-xl transition-colors"
+              >
                 <div className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-amber-400" />
                   <span>Vencimiento Próximo de Documentación Oficial (SOAT / CITV / Ranfla / SUTRAN)</span>

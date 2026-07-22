@@ -664,7 +664,7 @@ async function startServer() {
       if (req.body.auth && req.body.auth.configured) {
         database.auth = req.body.auth;
       }
-      saveDatabaseToDisk();
+      broadcastStateChange();
       eventBus.publish("AuditService", "FULL_SYSTEM_RESTORED", {}, "WARNING", "Base de datos sincronizada/restaurada desde respaldo externo");
       return res.json({ success: true, message: "Sincronización completada" });
     }

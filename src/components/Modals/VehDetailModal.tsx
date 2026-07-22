@@ -21,10 +21,11 @@ import { DocumentType, MaintenanceTask, VehicleExpense } from '../../types';
 
 interface VehDetailModalProps {
   vehicleId: string;
+  initialTab?: 'mantenimiento' | 'ranfla' | 'gastos' | 'docs' | 'combustible';
   onClose: () => void;
 }
 
-export default function VehDetailModal({ vehicleId, onClose }: VehDetailModalProps) {
+export default function VehDetailModal({ vehicleId, initialTab, onClose }: VehDetailModalProps) {
   const {
     vehiculos,
     removeVehicle,
@@ -43,7 +44,15 @@ export default function VehDetailModal({ vehicleId, onClose }: VehDetailModalPro
     removeVehicleExpense,
   } = useApp();
 
-  const [tab, setTab] = useState<'mantenimiento' | 'ranfla' | 'gastos' | 'docs' | 'combustible'>('mantenimiento');
+  const [tab, setTab] = useState<'mantenimiento' | 'ranfla' | 'gastos' | 'docs' | 'combustible'>(
+    initialTab || 'mantenimiento'
+  );
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Delete Confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
