@@ -44,6 +44,7 @@ export default function VehiclesView({ onOpenVehicleModal, onOpenVehDetail }: Ve
 
   // Identificar la unidad principal de carga pesada (Tráiler de cabecera)
   const mainTrailer = vehiculos.find((v) => v.tipo === 'Tráiler') || vehiculos[0];
+  const otherVehicles = mainTrailer ? vehiculos.filter((v) => v.id !== mainTrailer.id) : vehiculos;
 
   const handleConfirmDelete = async () => {
     if (!vehicleToDelete) return;
@@ -286,16 +287,20 @@ export default function VehiclesView({ onOpenVehicleModal, onOpenVehDetail }: Ve
         </div>
       )}
 
-      {/* Grid de Unidades de Flota */}
+      {/* Grid de Otras Unidades de Flota */}
       {vehiculos.length === 0 ? (
         <div className="text-center py-12 bg-[#212933] border border-dashed border-[#2e3944] rounded-2xl text-slate-400">
           <Car className="w-10 h-10 text-slate-600 mx-auto mb-3" />
           <p className="text-sm font-semibold">No hay vehículos registrados</p>
           <p className="text-xs text-slate-500 mt-1">Registra tus camiones, tráilers y furgones para auditar SOAT y combustible.</p>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {vehiculos.map((v) => {
+      ) : otherVehicles.length > 0 && (
+        <div className="space-y-3">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            Otras Unidades en Flota ({otherVehicles.length})
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {otherVehicles.map((v) => {
             let venc = 0;
             let prox = 0;
             let docMasProximo = v.documentos?.[0];
@@ -421,6 +426,7 @@ export default function VehiclesView({ onOpenVehicleModal, onOpenVehDetail }: Ve
             );
           })}
         </div>
+      </div>
       )}
 
       {/* ----------------- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN DE VEHÍCULO ----------------- */}
