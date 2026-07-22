@@ -57,7 +57,7 @@ function MainAppShell() {
       : 'bg-[#14181c] text-slate-100 font-sans';
 
   return (
-    <div className={`min-h-screen flex flex-col md:flex-row ${themeBgClass} overflow-x-hidden w-full relative`}>
+    <div className={`min-h-screen flex flex-col md:flex-row ${themeBgClass} ${theme.mode === 'light' ? 'light-mode' : ''} overflow-x-hidden w-full relative`}>
       {/* Sidebar Navigation */}
       <Sidebar currentView={currentView} onViewChange={setCurrentView} />
 

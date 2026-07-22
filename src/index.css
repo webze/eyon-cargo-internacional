@@ -1,1 +1,58 @@
 @import "tailwindcss";
+
+/* Custom theme overrides for Light Mode */
+.light-mode {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+.light-mode .bg-\[\#212933\],
+.light-mode .bg-\[\#1b2127\],
+.light-mode .bg-\[\#1b222b\] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05) !important;
+}
+
+.light-mode .bg-\[\#14181c\],
+.light-mode .bg-\[\#101418\],
+.light-mode .bg-\[\#262f3a\] {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.light-mode .border-\[\#2e3944\],
+.light-mode .border-\[\#262f3a\] {
+  border-color: #cbd5e1 !important;
+}
+
+.light-mode .text-slate-100,
+.light-mode .text-slate-200 {
+  color: #0f172a !important;
+}
+
+.light-mode .text-slate-300 {
+  color: #334155 !important;
+}
+
+.light-mode .text-slate-400 {
+  color: #475569 !important;
+}
+
+/* Enhancements for level indicator bars & timeline meters in both Dark and Light */
+.level-meter-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background-color: rgba(148, 163, 184, 0.2);
+}
+
+.level-meter-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.5s ease-in-out;
+}
